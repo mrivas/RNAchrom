@@ -28,9 +28,6 @@ oFile = args.oFile
 
 windSize=10000
 RNAonExon=True
-#linksFile="/data2/yu68/bharat-interaction/TwoStep1219-2014-3-17/split_partner/TwoStep1219_fragment_paired_align.txt"
-#folder="/data2/rivasas2/rnadna/contrast/ChIP-seq/"
-#chromFile="/data2/rivasas2/rnadna/TwoSteps/proofOfConcept/withOverl/exons_only/rmdup/windows/mm9.chrom.sizes"
 
 #################################
 # Functions

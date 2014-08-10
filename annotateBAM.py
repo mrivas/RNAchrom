@@ -25,10 +25,10 @@ rFile = args.rFile
 oFile = args.oFile
 
 
-#bFile="/data2/yu68/bharat-interaction/TwoStep1024-2014-3-14/RDI_TwoStep1024_total_sort.bam"
-#gFile="/home/rivasas2/tools/genomes/mouse/mm9/Mus_musculus.NCBIM37.67.gtf.gz"
-#rFile="/home/rivasas2/tools/genomes/mouse/mm9/repeatMasker.UIUC.bed"
-#oFile="test.bed"
+<<<<<<< HEAD
+=======
+
+>>>>>>> 43b6ff2256f778b4772a68412c946984877ca604
 ##############################################################
 # Functions
 
@@ -42,10 +42,10 @@ def getGenes(gtfFile):
 
 	for feature0 in gtf_file:
 		feature=feature0
-		# Add "chr" prefix to Ensembl chromosome names
-		if not re.match("^chr",feature.iv.chrom):
-			if feature.iv.chrom == "MT": feature.iv.chrom = "M"
-			feature.iv.chrom = "chr"+feature.iv.chrom
+#		# Add "chr" prefix to Ensembl chromosome names
+#		if not re.match("^chr",feature.iv.chrom):
+#			if feature.iv.chrom == "MT": feature.iv.chrom = "M"
+#			feature.iv.chrom = "chr"+feature.iv.chrom
 		
 		ID = feature.attr["gene_id"]+"-"+feature.attr["gene_biotype"]
 		if ID in geneID_IV:
@@ -80,41 +80,38 @@ def getRepeats(rFile):
 
 #######################################################################		
 def annotate(almnt,genes,exon,repeat):
-	geneAnnot=[]
-	exonAnnot=[]
-	repeatAnnot=[]
-	
-	# Gene level annotation
-	for iv,geneIDs in genes[almnt.iv].steps():
-		if len(geneIDs)==0: continue
-		for geneID in geneIDs:
-			geneAnnot.append(geneID)
+	geneAnnot=set()
+	exonAnnot=set()
+	repeatAnnot=set()
+
+	for cigop in almnt.cigar:
+		if cigop.type!="M": continue
+		# Gene level annotation
+		for iv,geneIDs in genes[cigop.ref_iv].steps():
+			geneAnnot |= geneIDs
+		# Exon annotation
+		for iv,exons in exon[cigop.ref_iv].steps():
+			exonAnnot |= exons
+		# Repeat annotation
+		for iv,repeats in repeat[cigop.ref_iv].steps():
+			repeatAnnot |= repeats
+
 	if len(geneAnnot)==0: geneAnnot="."
 	else:                 geneAnnot=",".join(map(str,geneAnnot))
-	# Exon annotation
-	for iv,geneIDs in exon[almnt.iv].steps():
-		if len(geneIDs)==0: continue
-		for geneID in geneIDs:
-			exonAnnot.append(geneID)
 	if len(exonAnnot)==0: exonAnnot="."
 	else:                 exonAnnot="exon"
 	if geneAnnot!="." and exonAnnot==".": exonAnnot="intron"
-	# Repeat annotation
-	for iv,geneIDs in repeat[almnt.iv].steps():
-		if len(geneIDs)==0: continue
-		for geneID in geneIDs:
-			repeatAnnot.append(geneID)
 	if len(repeatAnnot)==0: repeatAnnot="."
 	else:                   repeatAnnot=",".join(map(str,repeatAnnot))
-
+	
 	return geneAnnot+"|"+exonAnnot+"|"+repeatAnnot
 
 ####################################################
 def formatOutput(first,second,annotFirst,annotSecond):
 	output=[first.iv.chrom,str(first.iv.start),str(first.iv.end),first.iv.strand]
-	output=output+[annotFirst]
+	output=output+[annotFirst,first.optional_field("jM")]
 	output=output+[second.iv.chrom,str(second.iv.start),str(second.iv.end),second.iv.strand]
-	output=output+[annotSecond]
+	output=output+[annotSecond,second.optional_field("jM")]
 	output=output+[first.read.name]
 	output="\t".join(map(str,output))
 	return output
@@ -136,12 +133,12 @@ for i in range( len(bFile.split(",") ) ):
 	bam=HTSeq.BAM_Reader( bFile.split(",")[i] )
 	
 	for almnt in bam:
-		# Discard not aligned reads, and multihits
-		if (not almnt.aligned) or almnt.optional_field("NH")>1: continue
 	
 		###########################################################
 		# If one file with both mates
 		if len(bFile.split(","))==1:
+			# Discard not aligned reads, and multihits
+			if (not almnt.aligned) or almnt.optional_field("NH")>1: continue
 			if first == None:    
 				first = almnt
 			else: 
@@ -157,8 +154,11 @@ for i in range( len(bFile.split(",") ) ):
 
 				annotFirst=annotate(first,gene,exon,repeat)
 				annotSecond=annotate(second,gene,exon,repeat)
-
-				output=formatOutput(first,second,annotFirst,annotSecond)
+				
+				if first.pe_which=="first": # Always print first in pair at the beginning
+					output=formatOutput(first,second,annotFirst,annotSecond)
+				else:
+					output=formatOutput(second,first,annotSecond,annotFirst)
 				print >>out,output  
 				
 				first = None
@@ -166,6 +166,8 @@ for i in range( len(bFile.split(",") ) ):
 		###########################################################
 		# If two files, each with one mate
 		elif len(bFile.split(","))>1:
+			# Discard not aligned reads, and multihits
+			if (not almnt.aligned) or almnt.optional_field("NH")>1: continue
 			annot=annotate(almnt,gene,exon,repeat)
 			
 			if i==0:

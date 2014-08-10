@@ -18,8 +18,7 @@ args = parser.parse_args()
 aFile = args.aFile
 distance  = args.distance
 
-#aFile="/data2/yu68/bharat-interaction/TwoStep1024-2014-3-14/split_partner/TwoStep1024_fragment_paired_align.txt"
-#distance=5000
+
 ##############################################################
 # Functions
 

@@ -33,13 +33,7 @@ dist = args.dist
 chromFile = args.cFile
 oFile = args.oFile
 
-#windSize=10000
-#checkExon=False
-#dist=2000
-#awareFile="/data2/rivasas2/rnadna/TwoSteps/proofOfConcept/noOverlap/TwoStep1024.nOverl.txt"
-#blindFile="/data2/rivasas2/rnadna/TwoSteps/allReads/correlations/TwoStep1024.annotatedBAM.bed"
-#chromFile="/data2/rivasas2/rnadna/TwoSteps/proofOfConcept/withOverl/exons_only/rmdup/windows/mm9.chrom.sizes"
-#oFile="test.bed"
+
 
 ##################################
 # General Functions
@@ -124,7 +118,7 @@ def bed2awareLinks(File,chromLength,windSize,RNAonExon,dist):
 	return links
 
 
-################################################33
+################################################
 # Blind links functions
 
 def lineToIvBlind(line,chromLength,windSize,dist):

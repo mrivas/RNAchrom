@@ -31,11 +31,11 @@ for line in open(iFile,"r"):
 
 	if firstIVa==None:
 		firstIVa = HTSeq.GenomicInterval(fields[0],int(fields[1]),int(fields[2]),fields[3] )
-		firstIVb = HTSeq.GenomicInterval(fields[5],int(fields[6]),int(fields[7]),fields[8] )
+		firstIVb = HTSeq.GenomicInterval(fields[6],int(fields[7]),int(fields[8]),fields[9] )
 		firstLine = line
 	else:
 		secondIVa = HTSeq.GenomicInterval(fields[0],int(fields[1]),int(fields[2]),fields[3] )
-		secondIVb = HTSeq.GenomicInterval(fields[5],int(fields[6]),int(fields[7]),fields[8] )
+		secondIVb = HTSeq.GenomicInterval(fields[6],int(fields[7]),int(fields[8]),fields[9] )
 		
 		printed=False
 		if secondIVa!=firstIVa or secondIVb!=firstIVb:

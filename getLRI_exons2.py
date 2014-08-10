@@ -8,8 +8,8 @@ import re
 ###########################################################
 # Get command line arguments
 
-parser = argparse.ArgumentParser(description='Counts the number of long-range interactions per gene. Both DNA and RNA are counted per gene')
-parser.add_argument('-a',type=str,dest="aFile",help="BED file. Output of Stitch-seq_Aligner, where the left and right ends correspond to DNA and RNA, respectively")
+parser = argparse.ArgumentParser(description='Counts the number of long-range interactions per gene, but only for RNA-ends sitting on top of exons, utr3, or utr5 regions. Both DNA and RNA are counted per gene')
+parser.add_argument('-a',type=str,dest="aFile",help="BED file. Output of annotateBAM.py, where the left and right ends correspond to DNA and RNA, respectively")
 parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
 parser.add_argument('-d',type=int,dest="distance",help="INT. Minimum distance (in nucleotides) between RNA-DNA ends to be considered as a long range interaccion. Default = 4000 b",default=4000)
 parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output\"",default="output")
@@ -24,7 +24,10 @@ gtfFile = args.gFile
 distance  = args.distance
 oFile = args.oFile
 
-
+#aFile="/data2/yu68/bharat-interaction/TwoStep1024-2014-3-14/split_partner/TwoStep1024_fragment_paired_align.txt"
+#gtfFile="/home/rivasas2/tools/genomes/mouse/mm9/Mus_musculus.NCBIM37.67.gtf.gz"
+#distance=5000
+#oFile="test.txt"
 ##############################################################
 # Functions
 
@@ -44,11 +47,6 @@ def getGenes(gtfFile):
 		else:
 			geneID_IV[ID] = feature.iv
 	
-		# Add "chr" prefix to Ensembl chromosome names
-		if not re.match("^chr",geneID_IV[ID].chrom):
-			if geneID_IV[ID].chrom == "MT": geneID_IV[ID].chrom = "M"
-			geneID_IV[ID].chrom = "chr"+geneID_IV[ID].chrom
-
 	
 	# Get ID per genomic region
 	geneIV_ID = HTSeq.GenomicArrayOfSets("auto",stranded=False)
@@ -62,9 +60,13 @@ def getGenomicIntervals(line,distance):
 	line=line.strip("\n")
 	fields=line.split("\t")
 	iv_dna= HTSeq.GenomicInterval(fields[0],int(fields[1]),int(fields[2]),".")
-	iv_rna= HTSeq.GenomicInterval(fields[9],int(fields[10]),int(fields[11]),".")
+	iv_rna= HTSeq.GenomicInterval(fields[6],int(fields[7]),int(fields[8]),".")
 	longRange = False
-	
+
+	# if RNA-end is not sitting on top of an exon, utr3, or utr5 region: skips
+	if not ( fields[10].split("|")[-2] == "exon" ):
+		return [iv_dna,iv_rna,longRange]
+
 	# if distance ==0, consider all reads for the analysis=> longRange as True
 	if distance == 0:
 		longRange = True

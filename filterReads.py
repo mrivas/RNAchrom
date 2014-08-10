@@ -25,9 +25,7 @@ bFile = args.bFile
 distance  = args.distance
 oFile = args.oFile
 
-#aFile="/data2/yu68/bharat-interaction/TwoStep1024-2014-3-14/split_partner/TwoStep1024_fragment_paired_align.txt"
-#distance=0
-#oFile="test.txt"
+
 ##############################################################
 # Functions
 

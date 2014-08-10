@@ -6,19 +6,19 @@ import random
 import scipy.stats
 import os.path
 import pickle
+import py_compile
 random.seed(1)
 
 ###########################################################
 # Get command line arguments
 
-parser = argparse.ArgumentParser(description='Computes correlation between number of aimer-target links and number of ChIP-seq/DNase peaks')
-parser.add_argument('-l',type=str,dest="lFile",help="BED file. Paired-end alignment reads are presente on each line. Output of annotateBAM.py ")
+parser = argparse.ArgumentParser(description='Computes fold change of blind-links on regions targeted by aware-lings vs blind-links targeting everywhere')
+parser.add_argument('-a',type=str,dest="aFile",help="BED file. Aware-links file. The first and second mates correspond to DNA and RNA annotated using annotateBAM.py ")
+parser.add_argument('-b',type=str,dest="bFile",help="BED file. Blind-links file. annotated using annotateBAM.py ")
 parser.add_argument('-e',type=str,dest="exon",help="STR BOOL. \"True\", for checking that a mate should overlap and exon to be counted as outgoing link of a window (if both mates are on the same window, at least one of them should overlap an exon). \"False\", if want to count all links.")
 parser.add_argument('-w',type=int,dest="window",help="INT. Window size (nt) when splitting genome.")
-parser.add_argument('-t',type=str,dest="linkType",help="STR. Link type: aware, blind.")
 parser.add_argument('-d',type=int,dest="dist",help="INT. Distance between mates to be consider not selfligating.")
 parser.add_argument('-c',type=str,dest="cFile",help="TAB file. Chromosome size information")
-parser.add_argument('-f',type=str,dest="folder",help="STR. Folder where the ChIP-seq/DNase peak files are stored")
 parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file." )
 
 if len(sys.argv) == 1:
@@ -26,18 +26,24 @@ if len(sys.argv) == 1:
 	exit(0)
 
 args = parser.parse_args()
-linksFile = args.lFile
+awareFile = args.aFile
+blindFile = args.bFile
 checkExon = args.exon
 windSize = args.window
 dist = args.dist
-linkType = args.linkType
 chromFile = args.cFile
-folder = args.folder
 oFile = args.oFile
 
+#windSize=10000
+#checkExon="False"
+#dist=2000
+#awareFile="/data2/rivasas2/rnadna/TwoSteps/allReads/correlations/mm9/TwoStep1024.aware_rmdup_annotatedBAM.bed"
+#blindFile="/data2/rivasas2/rnadna/TwoSteps/allReads/correlations/mm9/TwoStep1024.all_rmdup_annotatedBAM.bed"
+#chromFile="/data2/rivasas2/rnadna/TwoSteps/allReads/blindVsAwareLinks/mm9/mm9.chrom.sizes"
+#oFile="test.bed"
 
 ##################################
-# Functions
+# General Functions
 
 def getchromLength(chromFile):
 	chromLength={}
@@ -74,20 +80,8 @@ def ivReg(iv,chromLength,windSize):
 	
 	return reg_iv
 
-def bed2Peaks(File,chromLength,windSize):
-# Convert DNA-RNA links from BED to GenomicArrayOfSets format
-
-	coverage = {}
-	
-	for line in open(File,"r"):
-		line = line.strip().split("\t")	
-		iv = ivReg( HTSeq.GenomicInterval( line[0],int(line[1]),int(line[2]) ), chromLength, windSize )
-		if iv in coverage:
-			coverage[iv] += 1
-		else:
-			coverage[iv] = 1
-
-	return coverage
+################################################
+# Blind links functions
 
 def lineToIv(line,chromLength,windSize,dist):
 # Create iv for DNA and RNA mates 
@@ -110,19 +104,18 @@ def lineToIv(line,chromLength,windSize,dist):
 	return [iv1,iv2,coding1,coding2,selfLig]
 	
 
-def bed2Links(bFile,chromLength,windSize,checkExon,dist,linkType):
+def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
 # Convert DNA-RNA links from BED to GenomicArrayOfSets format
 
 	links = {}
 	
 	for line in open(bFile,"r"):
-		line = line.strip()	
+		line = line.strip()
 		iv1, iv2, coding1,coding2,selfLig = lineToIv(line,chromLength,windSize,dist)
-		# Ignore links not present on known chromosomes
-		if type(iv1)!=HTSeq._HTSeq.GenomicInterval or type(iv2)!=HTSeq._HTSeq.GenomicInterval: continue
 		# Ignore selfLigating links (mates closer to each other by less than 2k nt)
 		if selfLig: continue
-
+		
+		# For aware links, iv2=rna_end, iv1=dna_end
 		if linkType=="aware":
 			# Count only if iv2 overlap an exon
 			if (not checkExon) or coding2:
@@ -134,7 +127,7 @@ def bed2Links(bFile,chromLength,windSize,checkExon,dist,linkType):
 				else:
 					links[iv2] = {}
 					links[iv2][iv1] = 1
-			
+		# For blind links
 		else:
 			if iv1!=iv2:
 				# Count only if iv1 overlap an exon
@@ -169,7 +162,6 @@ def bed2Links(bFile,chromLength,windSize,checkExon,dist,linkType):
 						links[iv1] = {}
 						links[iv1][iv2] = 1
 			
-
 	return links
 
 ##################################
@@ -178,56 +170,62 @@ def bed2Links(bFile,chromLength,windSize,checkExon,dist,linkType):
 print "Loading chromosomes"
 chromLength = getchromLength(chromFile)
 print "Creating links database"
-links = bed2Links(linksFile,chromLength,windSize,checkExon,dist,linkType) # rna_iv: set of dna_iv
-print "Creating peaks database"
-peaks=[]
-header=["coord"]
-for fileName in os.listdir(folder):
-	if fileName=="procedure.sh": continue
-	header.append(fileName)
-	peaksFile=folder+fileName
-	peaks.append( bed2Peaks(peaksFile,chromLength,windSize) )# nucleosome_iv: set of peaks_iv
-
+awareLinks = bed2links(awareFile,chromLength,windSize,checkExon,dist,"aware") # rna_iv: set of dna_iv
+blindLinks = bed2links(blindFile,chromLength,windSize,checkExon,dist,"blind") # rna_iv: set of dna_iv
 print "Matching number of hits and peaks"
-countsMatrix={}
+ratio={}
+awareCounts,specificBlindCounts,allBlindCounts={},{},{}
+zeroc,allc=0,0
 # Count hits on targets of region_iv
 # Count histone peaks on region_iv
 # Only counts peaks on regions that already have links counts
 # This since most genomic regions having histone peaks aren't
 # expected to have interaction with all aimers.				
-for iv1 in links: # Iterate over aimer regions
-	# Requieres that current aimer has at least 5 targets
-	if len(links[iv1])<5: continue
-	for iv2 in links[iv1]: # Iterate over targets of current aimer
-		numPeaks=[]
-		for peak in peaks: # Fetch histone information
-			# Fetch of histone peaks for current target region
-			if iv2 in peak:
-				numPeaks.append( peak[iv2] )
-			else:
-				numPeaks.append(0)
-		# For current amimer, saves number of hits (col 1) and number of peaks for each target (rows)	
-		if iv1 in countsMatrix:
-			countsMatrix[iv1]=numpy.vstack( [ countsMatrix[iv1], [links[iv1][iv2]]+ numPeaks] )
-		else:
-			countsMatrix[iv1]=[ links[iv1][iv2]  ] + numPeaks
+for iv1 in awareLinks: # Iterate over aimer regions
+	## Requieres that current aimer has at least 5 targets
+	#if len(links[iv1])<5: continue
+
+	# Count all blind-link targets
+	allBlindCount=0
+	if iv1 in blindLinks:
+		for iv2 in blindLinks[iv1]:
+			allBlindCount += blindLinks[iv1][iv2]
+
+	# Count blind-links on aware-links targets
+	specificBlindCount=0
+	if iv1 in blindLinks:
+		for iv2 in awareLinks[iv1]: # Iterate over targets of current aimer
+			if iv2 in blindLinks[iv1]:
+				specificBlindCount += blindLinks[iv1][iv2]
+	# Count aware-links targets
+	awareCount=0
+	for iv2 in awareLinks[iv1]: # Iterate over targets of current aimer
+		awareCount += awareLinks[iv1][iv2]
+	
+	allc+=1
+	if allBlindCount==0:
+		zeroc+=1
+		continue
+	ratio[iv1] = float(specificBlindCount) / float(allBlindCount)		
+	
+	awareCounts[iv1]        = awareCount
+	specificBlindCounts[iv1] = specificBlindCount
+	allBlindCounts[iv1]     = allBlindCount
 
 print "Printing results to output file"
 out=open(oFile,'w')
-print >>out, "\t".join(map(str,header))
-for iv in countsMatrix:
-	ivString=iv.chrom+":"+str(iv.start)+"-"+str(iv.end)
-	output = [ivString] + [ scipy.stats.spearmanr(countsMatrix[iv][:,0],countsMatrix[iv][:,i]) for i in range(1,countsMatrix[iv].shape[1]) ]			
-	print >>out, "\t".join(map(str,output))
+for iv in ratio:
+	print >>out, iv.chrom+"\t"+str(iv.start)+"\t"+str(iv.end)+"\t"+str(ratio[iv])+"\t"+str(awareCounts[iv])+"\t"+str(specificBlindCounts[iv])+"\t"+str(allBlindCounts[iv])
+			
 out.close()
 
 print "Save objects to file"
-out=open(oFile+"_countsMatrix.pkl","w")
-pickle.dump(countsMatrix,out)
+out=open(oFile+"_blindLinks.pkl","w")
+pickle.dump(blindLinks,out)
 out.close()
-out=open(oFile+"_links.pkl","w")
-pickle.dump(links,out)
+out=open(oFile+"_awareLinks.pkl","w")
+pickle.dump(awareLinks,out)
 out.close()
-out=open(oFile+"_peaks.pkl","w")
-pickle.dump(peaks,out)
+out=open(oFile+"_ratio.pkl","w")
+pickle.dump(ratio,out)
 out.close()

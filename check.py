@@ -18,8 +18,6 @@ unmapFile = args.uFile
 fastqFile = args.fFile
 oFile = args.oFile
 
-#linkerFile="/data2/yu68/bharat-interaction/TwoStep1219-2014-3-17/split_partner/fragment_align_detail.txt"
-#unmapFile="/data2/rivasas2/rnadna/TwoSteps/allReads/alignments/TwoStep1024.Unmapped.out.mate1"
 
 unmap={}
 nLine=0
