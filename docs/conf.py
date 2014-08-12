@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 # rnadna documentation build configuration file, created by
-# sphinx-quickstart on Tue Aug  5 11:54:50 2014.
+# sphinx-quickstart on Tue Aug 12 11:16:36 2014.
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.
@@ -30,14 +30,6 @@ import os
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.doctest',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
-    'sphinx.ext.coverage',
-    'sphinx.ext.pngmath',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.ifconfig',
-    'sphinx.ext.viewcode',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -266,7 +258,3 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
-
-
-# Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}

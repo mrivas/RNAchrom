@@ -34,6 +34,10 @@ dist = args.dist
 chromFile = args.cFile
 oFile = args.oFile
 
+if checkExon=="True":
+	checkExon=True
+else:
+	checkExon=False
 #windSize=10000
 #checkExon="False"
 #dist=2000
@@ -103,10 +107,10 @@ def lineToIv(line,chromLength,windSize,dist):
 
 	return [iv1,iv2,coding1,coding2,selfLig]
 	
-
 def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
 # Convert DNA-RNA links from BED to GenomicArrayOfSets format
 
+	countL=0
 	links = {}
 	
 	for line in open(bFile,"r"):
@@ -117,7 +121,6 @@ def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
 		
 		# For aware links, iv2=rna_end, iv1=dna_end
 		if linkType=="aware":
-			# Count only if iv2 overlap an exon
 			if (not checkExon) or coding2:
 				if iv2 in links:
 					if iv1 in links[iv2]:
@@ -170,42 +173,32 @@ def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
 print "Loading chromosomes"
 chromLength = getchromLength(chromFile)
 print "Creating links database"
-awareLinks = bed2links(awareFile,chromLength,windSize,checkExon,dist,"aware") # rna_iv: set of dna_iv
-blindLinks = bed2links(blindFile,chromLength,windSize,checkExon,dist,"blind") # rna_iv: set of dna_iv
+awareLinks = bed2links(awareFile,chromLength,windSize,checkExon,dist,"aware") # rna_iv as iv1
+blindLinks = bed2links(blindFile,chromLength,windSize,checkExon,dist,"blind") #
 print "Matching number of hits and peaks"
 ratio={}
 awareCounts,specificBlindCounts,allBlindCounts={},{},{}
-zeroc,allc=0,0
 # Count hits on targets of region_iv
-# Count histone peaks on region_iv
-# Only counts peaks on regions that already have links counts
-# This since most genomic regions having histone peaks aren't
-# expected to have interaction with all aimers.				
 for iv1 in awareLinks: # Iterate over aimer regions
-	## Requieres that current aimer has at least 5 targets
-	#if len(links[iv1])<5: continue
-
 	# Count all blind-link targets
 	allBlindCount=0
-	if iv1 in blindLinks:
-		for iv2 in blindLinks[iv1]:
-			allBlindCount += blindLinks[iv1][iv2]
+	#if iv1 in blindLinks:
+	for iv2 in blindLinks[iv1]:
+		allBlindCount += blindLinks[iv1][iv2]
 
 	# Count blind-links on aware-links targets
 	specificBlindCount=0
-	if iv1 in blindLinks:
-		for iv2 in awareLinks[iv1]: # Iterate over targets of current aimer
-			if iv2 in blindLinks[iv1]:
-				specificBlindCount += blindLinks[iv1][iv2]
+	#if iv1 in blindLinks:
+	for iv2 in awareLinks[iv1]: # Iterate over targets of current aimer
+		if iv2 in blindLinks[iv1]:
+			specificBlindCount += blindLinks[iv1][iv2]
 	# Count aware-links targets
 	awareCount=0
 	for iv2 in awareLinks[iv1]: # Iterate over targets of current aimer
 		awareCount += awareLinks[iv1][iv2]
 	
-	allc+=1
-	if allBlindCount==0:
-		zeroc+=1
-		continue
+#	if allBlindCount==0:
+#		continue
 	ratio[iv1] = float(specificBlindCount) / float(allBlindCount)		
 	
 	awareCounts[iv1]        = awareCount
