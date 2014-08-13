@@ -1,5 +1,5 @@
 .. rnadna documentation master file, created by
-   sphinx-quickstart on Tue Aug 12 11:16:36 2014.
+   sphinx-quickstart on Tue Aug 12 17:58:15 2014.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -11,7 +11,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-
+.. automodule:: annotateBAM
+   :members:
 
 Indices and tables
 ==================
