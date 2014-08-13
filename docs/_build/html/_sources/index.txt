@@ -11,8 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-.. automodule:: annotateBAM
-   :members:
+   annotateBAM
 
 Indices and tables
 ==================
