@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Welcome to rnadna’s documentation! &mdash; rnadna 1 documentation</title>
+    <title>Command Line Utilites &mdash; rnadna 1 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -23,8 +23,8 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="rnadna 1 documentation" href="#" />
-    <link rel="next" title="Command Line Utilites" href="commandLineTools.html" /> 
+    <link rel="top" title="rnadna 1 documentation" href="index.html" />
+    <link rel="prev" title="Welcome to rnadna’s documentation!" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -37,9 +37,9 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="commandLineTools.html" title="Command Line Utilites"
-             accesskey="N">next</a> |</li>
-        <li><a href="#">rnadna 1 documentation</a> &raquo;</li> 
+          <a href="index.html" title="Welcome to rnadna’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">rnadna 1 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -48,22 +48,34 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="welcome-to-rnadna-s-documentation">
-<h1>Welcome to rnadna&#8217;s documentation!<a class="headerlink" href="#welcome-to-rnadna-s-documentation" title="Permalink to this headline">¶</a></h1>
-<p>Contents:</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="commandLineTools.html">Command Line Utilites</a></li>
-</ul>
-</div>
-</div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
-<ul class="simple">
-<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
-<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
-<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
-</ul>
+  <div class="section" id="command-line-utilites">
+<h1>Command Line Utilites<a class="headerlink" href="#command-line-utilites" title="Permalink to this headline">¶</a></h1>
+<p>Annotate both mates of paired-end alignments</p>
+<pre class="literal-block">
+usage: annnot [-h] [-b BFILE] [-g GFILE] [-r RFILE] [-o OFILE]
+</pre>
+<dl class="docutils">
+<dt>Options:</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">-b</span></kbd></td>
+<td>BAM file(s). A single aligment file contains all paired-end mates, or a comma separated list of 2 files, one per each set of mates (useful when mate origin is important).</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-g</span></kbd></td>
+<td>GTF file. Annotation file with biotype information</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-r</span></kbd></td>
+<td>BED file. Annotation file with repeats information</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-o=output</span></kbd></td>
+<td>STR. Name of output file. Default = &#8220;output&#8221;</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
 </div>
 
 
@@ -72,20 +84,12 @@
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
-  <h3><a href="#">Table Of Contents</a></h3>
-  <ul>
-<li><a class="reference internal" href="#">Welcome to rnadna&#8217;s documentation!</a><ul>
-</ul>
-</li>
-<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
-</ul>
-
-  <h4>Next topic</h4>
-  <p class="topless"><a href="commandLineTools.html"
-                        title="next chapter">Command Line Utilites</a></p>
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to rnadna&#8217;s documentation!</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
-    <li><a href="_sources/index.txt"
+    <li><a href="_sources/commandLineTools.txt"
            rel="nofollow">Show Source</a></li>
   </ul>
 <div id="searchbox" style="display: none">
@@ -115,9 +119,9 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="commandLineTools.html" title="Command Line Utilites"
-             >next</a> |</li>
-        <li><a href="#">rnadna 1 documentation</a> &raquo;</li> 
+          <a href="index.html" title="Welcome to rnadna’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">rnadna 1 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">

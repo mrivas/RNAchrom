@@ -11,7 +11,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   annotateBAM
+   commandLineTools
 
 Indices and tables
 ==================

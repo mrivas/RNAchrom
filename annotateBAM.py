@@ -5,8 +5,7 @@ import HTSeq
 import numpy
 import re
 
-def main():
-	###########################################################
+def getArgs():
 	# Get command line arguments
 	parser = argparse.ArgumentParser(description='Annotate both mates of paired-end alignments')
 	parser.add_argument('-b',type=str,dest="bFile",help="BAM file(s). A single aligment file contains all paired-end mates, or a comma separated list of 2 files, one per each set of mates (useful when mate origin is important).")
@@ -17,14 +16,16 @@ def main():
 	if len(sys.argv) == 1:
 		print >> sys.stderr,parser.print_help()
 		exit(0)
+	return parser
 
-	args = parser.parse_args()
+###########################################################
+def main():
+	args = getArgs().parse_args()
 	bFile = args.bFile
 	gFile = args.gFile
 	rFile = args.rFile
 	oFile = args.oFile
-	###########################################################
-	# Excecution
+	# Excecution #####################################################
 	print "Getting repeats"
 	repeat = getRepeats(rFile)
 	print "Getting genes,biotype, and exons"
@@ -175,7 +176,6 @@ def formatOutput(first,second,annotFirst,annotSecond):
 	output="\t".join(map(str,output))
 	return output
 
-
-
+####################################################
 if __name__ == '__main__':
 	main()

@@ -102,7 +102,7 @@ def lineToIv(line,chromLength,windSize,dist):
 	# Check if mates are selfligating
 	if iv1.chrom!=iv2.chrom:
 		selfLig=False
-	elif abs(iv1.start-iv2.start)>dist:
+	elif min( abs(iv1.end-iv2.start), abs(iv1.start-iv2.end) ) > dist:
 		selfLig=False
 
 	return [iv1,iv2,coding1,coding2,selfLig]
@@ -197,8 +197,6 @@ for iv1 in awareLinks: # Iterate over aimer regions
 	for iv2 in awareLinks[iv1]: # Iterate over targets of current aimer
 		awareCount += awareLinks[iv1][iv2]
 	
-#	if allBlindCount==0:
-#		continue
 	ratio[iv1] = float(specificBlindCount) / float(allBlindCount)		
 	
 	awareCounts[iv1]        = awareCount

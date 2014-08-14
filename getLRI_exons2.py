@@ -72,7 +72,7 @@ def getGenomicIntervals(line,distance):
 		longRange = True
 	elif iv_dna.chrom != iv_rna.chrom:
 		longRange = True
-	elif (iv_dna.start - iv_rna.end)>=distance or (iv_rna.start - iv_dna.end)>=distance:
+	elif min( abs(iv_dna.start - iv_rna.end), (iv_rna.start - iv_dna.end) ) > distance:
 		longRange = True
 
 	return [iv_dna,iv_rna,longRange]
@@ -85,7 +85,7 @@ def getLongRangeInteractions(aFile,distance,geneIV_ID):
 	for line in open(aFile,"r"):
 		iv_dna, iv_rna, longRange = getGenomicIntervals(line,distance)
 		
-		if longRange==False: continue
+		if not longRange: continue
 
 		####################################
 		# Count DNA ends
