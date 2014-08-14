@@ -47,9 +47,11 @@
             
   <div class="section" id="command-line-utilites">
 <h1>Command Line Utilites<a class="headerlink" href="#command-line-utilites" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="annotate-bam-files">
+<h2>Annotate BAM files<a class="headerlink" href="#annotate-bam-files" title="Permalink to this headline">¶</a></h2>
 <p>Annotate both mates of paired-end alignments</p>
 <pre class="literal-block">
-usage: annnot [-h] [-b BFILE] [-g GFILE] [-r RFILE] [-o OFILE]
+usage: annnotateBAM [-h] [-b BFILE] [-g GFILE] [-r RFILE] [-o OFILE]
 </pre>
 <dl class="docutils">
 <dt>Options:</dt>
@@ -74,6 +76,166 @@ usage: annnot [-h] [-b BFILE] [-g GFILE] [-r RFILE] [-o OFILE]
 </dd>
 </dl>
 </div>
+<div class="section" id="compute-correlation-between-number-of-links-and-number-of-histone-peaks">
+<h2>Compute correlation between number of links and number of histone peaks<a class="headerlink" href="#compute-correlation-between-number-of-links-and-number-of-histone-peaks" title="Permalink to this headline">¶</a></h2>
+<p>Computes correlation between number of aimer-target links and number of ChIP-seq/DNase peaks</p>
+<pre class="literal-block">
+usage: corrWind [-h] [-l LFILE] [-e EXON] [-w WINDOW] [-t LINKTYPE] [-d DIST]
+                [-c CFILE] [-f FOLDER] [-o OFILE]
+</pre>
+<dl class="docutils">
+<dt>Options:</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">-l</span></kbd></td>
+<td>BED file. Paired-end alignment reads are presente on each line. Output of annotateBAM.py </td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-e</span></kbd></td>
+<td>STR BOOL. &#8220;True&#8221;, for checking that a mate should overlap and exon to be counted as outgoing link of a window (if both mates are on the same window, at least one of them should overlap an exon). &#8220;False&#8221;, if want to count all links.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-w</span></kbd></td>
+<td>INT. Window size (nt) when splitting genome.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-t</span></kbd></td>
+<td>STR. Link type: aware, blind.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-d</span></kbd></td>
+<td>INT. Distance between mates to be consider not selfligating.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-c</span></kbd></td>
+<td>TAB file. Chromosome size information</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-f</span></kbd></td>
+<td>STR. Folder where the ChIP-seq/DNase peak files are stored</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-o</span></kbd></td>
+<td>STR. Name of output file.</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</div>
+<div class="section" id="count-long-range-interactions">
+<h2>Count long range interactions<a class="headerlink" href="#count-long-range-interactions" title="Permalink to this headline">¶</a></h2>
+<p>Counts the number of long-range interactions per gene, but only for RNA-ends sitting on top of exons, utr3, or utr5 regions. Both DNA and RNA are counted per gene</p>
+<pre class="literal-block">
+usage: longRangeInterac [-h] [-a AFILE] [-g GFILE] [-d DISTANCE] [-o OFILE]
+</pre>
+<dl class="docutils">
+<dt>Options:</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">-a</span></kbd></td>
+<td>BED file. Output of annotateBAM.py, where the left and right ends correspond to DNA and RNA, respectively</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-g</span></kbd></td>
+<td>GTF file. Annotation file with biotype information</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-d=4000</span></kbd></td>
+<td>INT. Minimum distance (in nucleotides) between RNA-DNA ends to be considered as a long range interaccion. Default = 4000 b</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-o=output</span></kbd></td>
+<td>STR. Name of output file. Default = &#8220;output&#8221;</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</div>
+<div class="section" id="remove-overlapps">
+<h2>Remove overlapps<a class="headerlink" href="#remove-overlapps" title="Permalink to this headline">¶</a></h2>
+<p>Remove overlapping reads.</p>
+<pre class="literal-block">
+usage: removeOverlapps [-h] [-i IFILE] [-o OFILE]
+</pre>
+<dl class="docutils">
+<dt>Options:</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">-i</span></kbd></td>
+<td>BED file. Coordenate-sorted output of annotateBAM.py.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-o</span></kbd></td>
+<td>BED file. Name of output file. Same format as input file.</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</div>
+<div class="section" id="filter-out-reads-showing-known-splice-junctions">
+<h2>Filter out reads showing known splice-junctions<a class="headerlink" href="#filter-out-reads-showing-known-splice-junctions" title="Permalink to this headline">¶</a></h2>
+<p>Get interesting read&#8217;s IDs (printed to STDOUT). That&#8217;s, reads that: (1) have spliced junctions concordant with the annotated genome, and (2) have a mate farther apart than a given distance</p>
+<pre class="literal-block">
+usage: sj [-h] [-b BFILE] [-d DIST] [-o OFILE]
+</pre>
+<dl class="docutils">
+<dt>Options:</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">-b</span></kbd></td>
+<td>BAM file(s). A single aligment file contains all paired-end mates.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-d</span></kbd></td>
+<td>INT. Minimum distance between paired-end mates</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-o</span></kbd></td>
+<td>STR. Name of output file.</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</div>
+<div class="section" id="compute-specificity-of-blind-links">
+<h2>Compute specificity of blind-links<a class="headerlink" href="#compute-specificity-of-blind-links" title="Permalink to this headline">¶</a></h2>
+<p>Computes fold change of blind-links on regions targeted by aware-lings vs blind-links targeting everywhere</p>
+<pre class="literal-block">
+usage: specificity [-h] [-a AFILE] [-b BFILE] [-e EXON] [-w WINDOW] [-d DIST]
+                   [-c CFILE] [-o OFILE]
+</pre>
+<dl class="docutils">
+<dt>Options:</dt>
+<dd><table class="first last docutils option-list" frame="void" rules="none">
+<col class="option" />
+<col class="description" />
+<tbody valign="top">
+<tr><td class="option-group">
+<kbd><span class="option">-a</span></kbd></td>
+<td>BED file. Aware-links file. The first and second mates correspond to DNA and RNA annotated using annotateBAM.py </td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-b</span></kbd></td>
+<td>BED file. Blind-links file. annotated using annotateBAM.py </td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-e</span></kbd></td>
+<td>STR BOOL. &#8220;True&#8221;, for checking that a mate should overlap and exon to be counted as outgoing link of a window (if both mates are on the same window, at least one of them should overlap an exon). &#8220;False&#8221;, if want to count all links.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-w</span></kbd></td>
+<td>INT. Window size (nt) when splitting genome.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-d</span></kbd></td>
+<td>INT. Distance between mates to be consider not selfligating.</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-c</span></kbd></td>
+<td>TAB file. Chromosome size information</td></tr>
+<tr><td class="option-group">
+<kbd><span class="option">-o</span></kbd></td>
+<td>STR. Name of output file.</td></tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</div>
+</div>
 
 
           </div>
@@ -81,6 +243,19 @@ usage: annnot [-h] [-b BFILE] [-g GFILE] [-r RFILE] [-o OFILE]
       </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Command Line Utilites</a><ul>
+<li><a class="reference internal" href="#annotate-bam-files">Annotate BAM files</a></li>
+<li><a class="reference internal" href="#compute-correlation-between-number-of-links-and-number-of-histone-peaks">Compute correlation between number of links and number of histone peaks</a></li>
+<li><a class="reference internal" href="#count-long-range-interactions">Count long range interactions</a></li>
+<li><a class="reference internal" href="#remove-overlapps">Remove overlapps</a></li>
+<li><a class="reference internal" href="#filter-out-reads-showing-known-splice-junctions">Filter out reads showing known splice-junctions</a></li>
+<li><a class="reference internal" href="#compute-specificity-of-blind-links">Compute specificity of blind-links</a></li>
+</ul>
+</li>
+</ul>
+
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
                         title="previous chapter">Welcome to rnadna&#8217;s documentation!</a></p>
