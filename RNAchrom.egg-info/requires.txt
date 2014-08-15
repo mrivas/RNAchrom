@@ -1,5 +1,0 @@
-numpy
-sys
-argparse
-HTSeq
-scipy
