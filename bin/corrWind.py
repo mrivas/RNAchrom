@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse, HTSeq, numpy, scipy.stats, pickle, random, sys
+import argparse, HTSeq, numpy, scipy.stats, pickle, random, sys, os
 import RNAchrom
 random.seed(1)
 
