@@ -179,9 +179,9 @@ def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
 	
 	for line in open(bFile,"r"):
 		line = line.strip()	
-		iv1, iv2, coding1,coding2,selfLig = lineToIv(line,chromLength,windSize,dist)
-		iv1Reg=ivReg(iv1)
-		iv2Reg=ivReg(iv2)
+		iv1, iv2, coding1,coding2,selfLig = lineToIv(line,dist)
+		iv1Reg=ivReg(iv1,chromLength,windSize)
+		iv2Reg=ivReg(iv2,chromLength,windSize)
 		# Ignore selfLigating links (mates closer to each other by less than 2k nt)
 		if selfLig: continue
 
