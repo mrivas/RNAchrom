@@ -1,0 +1,29 @@
+annotateBAM
+==========
+*1 getGenes -> geneExonIV
+getRepeats
+annotate
+formatOutput
+
+corrWind
+=======
+*3 getchromLength
+*4 ivReg
+bed2Peaks
+*2 lineToIv
+*5 bed2Links
+
+longRangeInterc
+===============
+*1 getGenes -> genes
+*2 getGenomicIntervals -> deleted (lineToIv)
+getLongRangeInteractions
+getBioType
+
+specificity
+===========
+*3 getchromLength -> deleted
+*4 ivReg - > deleted
+*2 linToIv -> deleted
+*5 bed2Links -> deleted
+
