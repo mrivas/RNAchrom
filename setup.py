@@ -7,6 +7,6 @@ setup(name='RNAchrom',
 	author='Marcelo Rivas-Astroza',
 	license='GPL',
 	packages=['RNAchrom'],
-	scripts=['bin/annotateBAM','bin/countHits','bin/corrWind','bin/sj','bin/specificity','bin/removeOverlapps'],
+	scripts=['bin/annotateBAM.py','bin/countHits.py','bin/corrWind.py','bin/sj.py','bin/specificity.py','bin/removeOverlapps.py'],
 	install_requires=['numpy','sys','argparse','HTSeq','scipy',],
 	zip_safe=False)
