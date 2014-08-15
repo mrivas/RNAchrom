@@ -7,7 +7,6 @@ setup(name='RNAchrom',
 	author='Marcelo Rivas-Astroza',
 	license='GPL',
 	packages=['RNAchrom'],
-	entry_points={'console_scripts':['annotateBAM=annotateBAM.command_line:main'],},
+	entry_points={'console_scripts':['annotateBAM=RNAchrom.annotateBAM:main'],},
 	install_requires=['numpy','sys','argparse','HTSeq','scipy',],
-	dependency_links=['https://github.com/noteed/python-pickle/archive/master.zip'],
 	zip_safe=False)
