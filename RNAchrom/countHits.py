@@ -5,11 +5,11 @@ import RNAchrom
 ###########################################################
 # Get command line arguments
 def getParser():
-	parser = argparse.ArgumentParser(description='Counts the number of long-range interactions per gene, but only for RNA-ends sitting on top of exons, utr3, or utr5 regions. Both DNA and RNA are counted per gene')
+	parser = argparse.ArgumentParser(description='Counts the number of RNA and DNA mates per gene (including introns). Only mates where the RNA-ends overlap exons are use.')
 	parser.add_argument('-a',type=str,dest="aFile",help="BED file. Output of annotateBAM.py, where the left and right ends correspond to DNA and RNA, respectively")
 	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
-	parser.add_argument('-d',type=int,dest="distance",help="INT. Minimum distance (in nucleotides) between RNA-DNA ends to be considered as a long range interaccion. Default = 4000 b",default=4000)
-	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output\"",default="output")
+	parser.add_argument('-d',type=int,dest="distance",help="INT. Minimum distance (in nucleotides) between RNA-DNA ends to be considered as a long range interaccion. Default = 2000 b",default=2000)
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
 
 	if len(sys.argv) == 1:
 		print >> sys.stderr,parser.print_help()
@@ -28,9 +28,9 @@ def main():
 	#distance=5000
 	#oFile="test.txt"
 	print "Getting genes"
-	geneID_IV,geneIV_ID = RNAchrom.getGenes(gtfFile)
+	geneID_IV,geneIV_ID = RNAchrom.genes(gtfFile)
 	print "Counting long range interactions per gene"
-	countsDNA, countsRNA = RNAchrom.getLongRangeInteractions(aFile,distance,geneIV_ID) 
+	countsDNA, countsRNA = RNAchrom.getCounts(aFile,distance,geneIV_ID) 
 	print "Getting biotypes"
 	bioType = RNAchrom.getBioType(gtfFile)
 	print "Saving results to: "+oFile
