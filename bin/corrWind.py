@@ -47,7 +47,7 @@ def main():
 		if fileName=="procedure.sh": continue
 		header.append(fileName)
 		peaksFile=folder+fileName
-		peaks.append( bed2peaks(peaksFile,chromLength,windSize) )# nucleosome_iv: set of peaks_iv
+		peaks.append( RNAchrom.bed2peaks(peaksFile,chromLength,windSize) )# nucleosome_iv: set of peaks_iv
 
 	print "Matching number of hits and peaks"
 	countsMatrix={}
