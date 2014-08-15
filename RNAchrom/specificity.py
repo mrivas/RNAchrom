@@ -34,10 +34,6 @@ def main():
 	chromFile = args.cFile
 	oFile = args.oFile
 
-	if checkExon=="True":
-		checkExon=True
-	else:
-		checkExon=False
 	#windSize=10000
 	#checkExon="False"
 	#dist=2000
