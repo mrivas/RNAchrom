@@ -24,9 +24,9 @@ def main():
 	oFile = args.oFile
 	# Excecution #####################################################
 	print "Getting repeats"
-	repeat = RNAchrom.getRepeats(rFile)
+	repeat = RNAchrom.repeats(rFile)
 	print "Getting genes,biotype, and exons"
-	gene,exon = RNAchrom.getGenes(gFile)
+	gene,exon = RNAchrom.geneExonIV(gFile)
 	print "Saving results to: "+oFile
 	out = open(oFile,'w')
 	first = None

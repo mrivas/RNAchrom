@@ -1,20 +1,11 @@
-import HTSeq
-import sys
-import pysam
-import numpy
-import re
-import random
-import scipy.stats
-import pickle
+import HTSeq, sys, numpy, random, scipy.stats, pickle
 
 ################################################################
 def test():
 	return "This is a test"
 
 ################################################################
-# ANNOTATEBAM
-################################################################
-def getGenes(gtfFile):
+def geneExonIV(gtfFile):
 	"""Stores genomic intervals of genes (including introns) and exons in dictionaries.
 	
 	:param gtfFile: GTF file.
@@ -46,7 +37,7 @@ def getGenes(gtfFile):
 	return [geneIV_ID,exon]
 
 #######################################################################
-def getRepeats(rFile):
+def repeats(rFile):
 	"""Stores genomic intervals of repeats as HTSeq.GenomicArrayOfSets.
 	
 	:param rFile: BED file with the name of repeats on 4th column.
@@ -58,8 +49,7 @@ def getRepeats(rFile):
 		iv=HTSeq.GenomicInterval(line[0],int(line[1]),int(line[2]))
 		repeat[iv]+=line[3]
 	return repeat
-
-#######################################################################		
+######################################################################
 def annotate(almnt,genes,exon,repeat):
 	"""Annotate an alignment
 	
@@ -112,11 +102,8 @@ def formatOutput(first,second,annotFirst,annotSecond):
 	output=output+[first.read.name]
 	output="\t".join(map(str,output))
 	return output
-
 ################################################################
-# corrWind
-################################################################
-def getchromLength(chromFile):
+def chromLength(chromFile):
 	chromLength={}
 	for line in open(chromFile,'r'):
 		line=line.strip().split("\t")
@@ -151,7 +138,7 @@ def ivReg(iv,chromLength,windSize):
 	
 	return reg_iv
 ################################################################
-def bed2Peaks(File,chromLength,windSize):
+def bed2peaks(File,chromLength,windSize):
 # Convert DNA-RNA links from BED to GenomicArrayOfSets format
 	coverage = {}
 	
@@ -165,13 +152,13 @@ def bed2Peaks(File,chromLength,windSize):
 
 	return coverage
 ################################################################
-def lineToIv(line,chromLength,windSize,dist):
+def lineToIv(line,dist):
 # Create iv for DNA and RNA mates 
 	line=line.split("\t")
 	coding1,coding2=False,False
 	selfLig=True
-	iv1 = ivReg( HTSeq.GenomicInterval( line[0],int(line[1]),int(line[2]) ), chromLength, windSize )
-	iv2 = ivReg( HTSeq.GenomicInterval( line[6],int(line[7]),int(line[8]) ), chromLength, windSize )
+	iv1 = HTSeq.GenomicInterval( line[0],int(line[1]),int(line[2]) )
+	iv2 = HTSeq.GenomicInterval( line[6],int(line[7]),int(line[8]) )
 	# check if mates overlap exons
 	if line[4].split("|")[-2]=="exon": 
 		coding1=True
@@ -180,12 +167,12 @@ def lineToIv(line,chromLength,windSize,dist):
 	# Check if mates are selfligating
 	if iv1.chrom!=iv2.chrom:
 		selfLig=False
-	elif abs(iv1.start-iv2.start)>dist:
+	elif min( abs(iv1.end-iv2.start), abs(iv1.start-iv2.end) )>dist:
 		selfLig=False
 
 	return [iv1,iv2,coding1,coding2,selfLig]
 ################################################################
-def bed2Links(bFile,chromLength,windSize,checkExon,dist,linkType):
+def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
 # Convert DNA-RNA links from BED to GenomicArrayOfSets format
 
 	links = {}
@@ -193,63 +180,59 @@ def bed2Links(bFile,chromLength,windSize,checkExon,dist,linkType):
 	for line in open(bFile,"r"):
 		line = line.strip()	
 		iv1, iv2, coding1,coding2,selfLig = lineToIv(line,chromLength,windSize,dist)
-		# Ignore links not present on known chromosomes
-		if type(iv1)!=HTSeq._HTSeq.GenomicInterval or type(iv2)!=HTSeq._HTSeq.GenomicInterval: continue
+		iv1Reg=ivReg(iv1)
+		iv2Reg=ivReg(iv2)
 		# Ignore selfLigating links (mates closer to each other by less than 2k nt)
 		if selfLig: continue
 
 		if linkType=="aware":
-			# Count only if iv2 overlap an exon
+			# Count only if iv2Reg overlap an exon
 			if (not checkExon) or coding2:
-				if iv2 in links:
-					if iv1 in links[iv2]:
-						links[iv2][iv1] += 1
+				if iv2Reg in links:
+					if iv1Reg in links[iv2Reg]:
+						links[iv2Reg][iv1Reg] += 1
 					else:
-						links[iv2][iv1] = 1
+						links[iv2Reg][iv1Reg] = 1
 				else:
-					links[iv2] = {}
-					links[iv2][iv1] = 1
+					links[iv2Reg] = {}
+					links[iv2Reg][iv1Reg] = 1
 			
 		else:
-			if iv1!=iv2:
-				# Count only if iv1 overlap an exon
+			if iv1Reg!=iv2Reg:
+				# Count only if iv1Reg overlap an exon
 				if (not checkExon) or coding1:
-					if iv1 in links:
-						if iv2 in links[iv1]:
-							links[iv1][iv2] += 1
+					if iv1Reg in links:
+						if iv2Reg in links[iv1Reg]:
+							links[iv1Reg][iv2Reg] += 1
 						else:
-							links[iv1][iv2] = 1
+							links[iv1Reg][iv2Reg] = 1
 					else:
-						links[iv1] = {}
-						links[iv1][iv2] = 1
-				# Count only if iv2 overlap an exon
+						links[iv1Reg] = {}
+						links[iv1Reg][iv2Reg] = 1
+				# Count only if iv2Reg overlap an exon
 				if (not checkExon) or coding2:
-					if iv2 in links:
-						if iv1 in links[iv2]:
-							links[iv2][iv1] += 1
+					if iv2Reg in links:
+						if iv1Reg in links[iv2Reg]:
+							links[iv2Reg][iv1Reg] += 1
 						else:
-							links[iv2][iv1] = 1
+							links[iv2Reg][iv1Reg] = 1
 					else:
-						links[iv2] = {}
-						links[iv2][iv1] = 1
+						links[iv2Reg] = {}
+						links[iv2Reg][iv1Reg] = 1
 			else:
-				# If iv1==iv2 at least one end must overlap and exon
+				# If iv1Reg==iv2Reg at least one end must overlap and exon
 				if (not checkExon) or ( coding1 or coding2 ):
-					if iv1 in links:
-						if iv2 in links[iv1]:
-							links[iv1][iv2] += 1
+					if iv1Reg in links:
+						if iv2Reg in links[iv1Reg]:
+							links[iv1Reg][iv2Reg] += 1
 						else:
-							links[iv1][iv2] = 1
+							links[iv1Reg][iv2Reg] = 1
 					else:
-						links[iv1] = {}
-						links[iv1][iv2] = 1
-			
-
+						links[iv1Reg] = {}
+						links[iv1Reg][iv2Reg] = 1
 	return links
-#############################################################################
-# longRangeInterac.py
-#############################################################################
-def getGenes(gtfFile):
+##################################################################
+def genes(gtfFile):
 	# Get overla genomic regions per each annotated feature in the annotation file
 
 	geneID_IV = {}
@@ -273,38 +256,16 @@ def getGenes(gtfFile):
 		geneIV_ID[ iv ] += geneID
 		
 	return geneID_IV,geneIV_ID
-
-def getGenomicIntervals(line,distance):
-	line=line.strip("\n")
-	fields=line.split("\t")
-	iv_dna= HTSeq.GenomicInterval(fields[0],int(fields[1]),int(fields[2]),".")
-	iv_rna= HTSeq.GenomicInterval(fields[6],int(fields[7]),int(fields[8]),".")
-	longRange = False
-
-	# if RNA-end is not sitting on top of an exon, utr3, or utr5 region: skips
-	if not ( fields[10].split("|")[-2] == "exon" ):
-		return [iv_dna,iv_rna,longRange]
-
-	# if distance ==0, consider all reads for the analysis=> longRange as True
-	if distance == 0:
-		longRange = True
-	elif iv_dna.chrom != iv_rna.chrom:
-		longRange = True
-	elif min( abs(iv_dna.start - iv_rna.end), (iv_rna.start - iv_dna.end) ) > distance:
-		longRange = True
-
-	return [iv_dna,iv_rna,longRange]
-
-def getLongRangeInteractions(aFile,distance,geneIV_ID):
+#############################################################
+def counts(aFile,distance,geneIV_ID):
 	# Gets the counts of long range interactions for each gene
 
 	countsDNA = {}
 	countsRNA = {}
 	for line in open(aFile,"r"):
-		iv_dna, iv_rna, longRange = getGenomicIntervals(line,distance)
+		iv_dna, iv_rna, coding1, coding2, selfLig = lineToIv(line,distance)
 		
-		if not longRange: continue
-
+		if selfLig or (not coding2): continue
 		####################################
 		# Count DNA ends
 		iset = None
@@ -313,12 +274,12 @@ def getLongRangeInteractions(aFile,distance,geneIV_ID):
 				iset = step_set.copy()
 			else:
 				iset.intersection_update( step_set )
-		if len( iset ) == 1:
-			key = list(iset)[0]
-			if key in countsDNA:
-				countsDNA[ key ] += 1
-			else:
-				countsDNA[ key ] = 1
+		if len( iset ) >= 1:
+			for key in iset:
+				if key in countsDNA:
+					countsDNA[ key ] += 1
+				else:
+					countsDNA[ key ] = 1
 		####################################
 		# Count RNA ends
 		iset = None
@@ -327,15 +288,15 @@ def getLongRangeInteractions(aFile,distance,geneIV_ID):
 				iset = step_set.copy()
 			else:
 				iset.intersection_update( step_set )
-		if len( iset ) == 1:
-			key = list(iset)[0]
-			if key in countsRNA:
-				countsRNA[ key ] += 1
-			else:
-				countsRNA[ key ] = 1
+		if len( iset ) >= 1:
+			for key in iset:
+				if key in countsRNA:
+					countsRNA[ key ] += 1
+				else:
+					countsRNA[ key ] = 1
 
 	return [countsDNA, countsRNA]
-
+######################################################
 def getBioType(gtfFile):
 	bioType={}
 	
@@ -346,124 +307,3 @@ def getBioType(gtfFile):
 		bioType[ ID ] = feature.attr["gene_biotype"]
 	
 	return bioType
-###################################################################	
-# specificity
-###################################################################	
-def getchromLength(chromFile):
-	chromLength={}
-	for line in open(chromFile,'r'):
-		line=line.strip().split("\t")
-		chromLength[line[0]] = int(line[1])
-	return chromLength
-
-def ivReg(iv,chromLength,windSize):
-# Regularization of intervals. The iv are transformed 
-# to canonical regions. This to avoid partial overlappings, and to get 
-# well defined aimer and target windows
-	chrom = iv.chrom
-	start = iv.start
-	end   = iv.end
-	length = chromLength[chrom]
-
-	start_s = start - start % windSize
-	start_e = min(start_s + windSize, length)
-	end_s   = end - end % windSize
-	end_e   = min(end_s   + windSize, length)
-	
-	# Return the canonical interval with the largest overlap,
-	# or chose one at random if iv is equally present on two of them
-	if (start_e-start) > (end-end_s):
-		reg_iv = HTSeq.GenomicInterval(chrom,start_s,start_e)	
-	elif (start_e-start) < (end-end_s):
-		reg_iv = HTSeq.GenomicInterval(chrom,end_s,end_e)	
-	else:
-		if random.random()>0.5:
-			reg_iv = HTSeq.GenomicInterval(chrom,start_s,start_e)	
-		else:
-			reg_iv = HTSeq.GenomicInterval(chrom,end_s,end_e)	
-	
-	return reg_iv
-
-################################################
-# Blind links functions
-
-def lineToIv(line,chromLength,windSize,dist):
-# Create iv for DNA and RNA mates 
-	line=line.split("\t")
-	coding1,coding2=False,False
-	selfLig=True
-	iv1 = ivReg( HTSeq.GenomicInterval( line[0],int(line[1]),int(line[2]) ), chromLength, windSize )
-	iv2 = ivReg( HTSeq.GenomicInterval( line[6],int(line[7]),int(line[8]) ), chromLength, windSize )
-	# check if mates overlap exons
-	if line[4].split("|")[-2]=="exon": 
-		coding1=True
-	if line[10].split("|")[-2]=="exon": 
-		coding2=True
-	# Check if mates are selfligating
-	if iv1.chrom!=iv2.chrom:
-		selfLig=False
-	elif min( abs(iv1.end-iv2.start), abs(iv1.start-iv2.end) ) > dist:
-		selfLig=False
-
-	return [iv1,iv2,coding1,coding2,selfLig]
-	
-def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
-# Convert DNA-RNA links from BED to GenomicArrayOfSets format
-
-	countL=0
-	links = {}
-	
-	for line in open(bFile,"r"):
-		line = line.strip()
-		iv1, iv2, coding1,coding2,selfLig = lineToIv(line,chromLength,windSize,dist)
-		# Ignore selfLigating links (mates closer to each other by less than 2k nt)
-		if selfLig: continue
-		
-		# For aware links, iv2=rna_end, iv1=dna_end
-		if linkType=="aware":
-			if (not checkExon) or coding2:
-				if iv2 in links:
-					if iv1 in links[iv2]:
-						links[iv2][iv1] += 1
-					else:
-						links[iv2][iv1] = 1
-				else:
-					links[iv2] = {}
-					links[iv2][iv1] = 1
-		# For blind links
-		else:
-			if iv1!=iv2:
-				# Count only if iv1 overlap an exon
-				if (not checkExon) or coding1:
-					if iv1 in links:
-						if iv2 in links[iv1]:
-							links[iv1][iv2] += 1
-						else:
-							links[iv1][iv2] = 1
-					else:
-						links[iv1] = {}
-						links[iv1][iv2] = 1
-				# Count only if iv2 overlap an exon
-				if (not checkExon) or coding2:
-					if iv2 in links:
-						if iv1 in links[iv2]:
-							links[iv2][iv1] += 1
-						else:
-							links[iv2][iv1] = 1
-					else:
-						links[iv2] = {}
-						links[iv2][iv1] = 1
-			else:
-				# If iv1==iv2 at least one end must overlap and exon
-				if (not checkExon) or ( coding1 or coding2 ):
-					if iv1 in links:
-						if iv2 in links[iv1]:
-							links[iv1][iv2] += 1
-						else:
-							links[iv1][iv2] = 1
-					else:
-						links[iv1] = {}
-						links[iv1][iv2] = 1
-			
-	return links
-

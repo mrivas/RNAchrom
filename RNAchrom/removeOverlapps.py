@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse, sys, HTSeq
-import RNAchrom
 
 ###########################################################
 # Get command line arguments

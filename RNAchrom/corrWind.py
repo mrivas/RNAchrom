@@ -27,6 +27,8 @@ def main():
 	args = getParser().parse_args()
 	linksFile = args.lFile
 	checkExon = args.exon
+	if checkExon=="True": checkExon=True
+	else:                 checkExon=False
 	windSize = args.window
 	dist = args.dist
 	linkType = args.linkType
@@ -35,9 +37,9 @@ def main():
 	oFile = args.oFile
 
 	print "Loading chromosomes"
-	chromLength = RNAchrom.getchromLength(chromFile)
+	chromLength = RNAchrom.chromLength(chromFile)
 	print "Creating links database"
-	links = RNAchrom.bed2Links(linksFile,chromLength,windSize,checkExon,dist,linkType) # rna_iv: set of dna_iv
+	links = RNAchrom.bed2links(linksFile,chromLength,windSize,checkExon,dist,linkType) # rna_iv: set of dna_iv
 	print "Creating peaks database"
 	peaks=[]
 	header=["coord"]
@@ -45,7 +47,7 @@ def main():
 		if fileName=="procedure.sh": continue
 		header.append(fileName)
 		peaksFile=folder+fileName
-		peaks.append( bed2Peaks(peaksFile,chromLength,windSize) )# nucleosome_iv: set of peaks_iv
+		peaks.append( bed2peaks(peaksFile,chromLength,windSize) )# nucleosome_iv: set of peaks_iv
 
 	print "Matching number of hits and peaks"
 	countsMatrix={}

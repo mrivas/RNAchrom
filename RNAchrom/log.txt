@@ -1,23 +1,23 @@
 annotateBAM
 ==========
 *1 getGenes -> geneExonIV
-getRepeats
+getRepeats -> repeats
 annotate
 formatOutput
 
 corrWind
 =======
-*3 getchromLength
+*3 getchromLength -> chromLength
 *4 ivReg
 bed2Peaks
 *2 lineToIv
-*5 bed2Links
+*5 bed2links
 
-longRangeInterc
+longRangeInterc -> countHits
 ===============
 *1 getGenes -> genes
 *2 getGenomicIntervals -> deleted (lineToIv)
-getLongRangeInteractions
+getLongRangeInteractions -> counts
 getBioType
 
 specificity
@@ -25,5 +25,5 @@ specificity
 *3 getchromLength -> deleted
 *4 ivReg - > deleted
 *2 linToIv -> deleted
-*5 bed2Links -> deleted
+*5 bed2links -> deleted
 

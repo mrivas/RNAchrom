@@ -27,6 +27,8 @@ def main():
 	awareFile = args.aFile
 	blindFile = args.bFile
 	checkExon = args.exon
+	if checkExon=="True": checkExon=True
+	else:                 checkExon=False
 	windSize = args.window
 	dist = args.dist
 	chromFile = args.cFile
@@ -45,7 +47,7 @@ def main():
 	#oFile="test.bed"
 
 	print "Loading chromosomes"
-	chromLength = RNAchrom.getchromLength(chromFile)
+	chromLength = RNAchrom.chromLength(chromFile)
 	print "Creating links database"
 	awareLinks = RNAchrom.bed2links(awareFile,chromLength,windSize,checkExon,dist,"aware") # rna_iv as iv1
 	blindLinks = RNAchrom.bed2links(blindFile,chromLength,windSize,checkExon,dist,"blind") #

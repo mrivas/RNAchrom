@@ -30,7 +30,7 @@ def main():
 	print "Getting genes"
 	geneID_IV,geneIV_ID = RNAchrom.genes(gtfFile)
 	print "Counting long range interactions per gene"
-	countsDNA, countsRNA = RNAchrom.getCounts(aFile,distance,geneIV_ID) 
+	countsDNA, countsRNA = RNAchrom.counts(aFile,distance,geneIV_ID) 
 	print "Getting biotypes"
 	bioType = RNAchrom.getBioType(gtfFile)
 	print "Saving results to: "+oFile

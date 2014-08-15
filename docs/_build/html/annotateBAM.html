@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
@@ -6,15 +8,15 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>annotateBAM module &mdash; rnadna 1 documentation</title>
+    <title>annotateBAM module &mdash; RNAchrom 0 documentation</title>
     
     <link rel="stylesheet" href="_static/default.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
-        VERSION:     '1',
+        URL_ROOT:    '',
+        VERSION:     '0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,7 +25,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="rnadna 1 documentation" href="index.html" /> 
+    <link rel="top" title="RNAchrom 0 documentation" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -35,7 +37,7 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">rnadna 1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">RNAchrom 0 documentation</a> &raquo;</li> 
       </ul>
     </div>  
 
@@ -47,87 +49,9 @@
   <div class="section" id="module-annotateBAM">
 <span id="annotatebam-module"></span><h1>annotateBAM module<a class="headerlink" href="#module-annotateBAM" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
-<dt id="annotateBAM.annotate">
-<tt class="descclassname">annotateBAM.</tt><tt class="descname">annotate</tt><big>(</big><em>almnt</em>, <em>genes</em>, <em>exon</em>, <em>repeat</em><big>)</big><a class="headerlink" href="#annotateBAM.annotate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Annotate an alignment</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>almnt</strong> &#8211; Alignment, HTSeq.GenomicInterval</li>
-<li><strong>genes</strong> &#8211; Genes, gene[genomic_iv]=set([geneID1,geneID2,...])</li>
-<li><strong>exon</strong> &#8211; Exons, exon[genomic_iv]=set([&#8220;exon&#8221;])</li>
-<li><strong>repeat</strong> &#8211; Repeats regions, HTSeq.GenomicArrayOfSets[genomic_iv]=set([repeatID])</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Annotation string, formed as: &#8220;[gene_annot1,gene_annot2,...|.]|[exon,intron|.]|[repeat_annot|.]&#8221;. Dot (.) denotes absence of annotation.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="annotateBAM.formatOutput">
-<tt class="descclassname">annotateBAM.</tt><tt class="descname">formatOutput</tt><big>(</big><em>first</em>, <em>second</em>, <em>annotFirst</em>, <em>annotSecond</em><big>)</big><a class="headerlink" href="#annotateBAM.formatOutput" title="Permalink to this definition">¶</a></dt>
-<dd><p>Takes alignments&#8217; information and creates an string fit to be printed.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>first</strong> &#8211; Genomic interval, HTSeq.GenomicInterval</li>
-<li><strong>second</strong> &#8211; Genomic interval, HTSeq.GenomicInterval</li>
-<li><strong>annotFirst</strong> &#8211; Annotation of <em>first</em></li>
-<li><strong>annotSecond</strong> &#8211; Annotation of <em>second</em></li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">String of annotations, &#8220;first.chrom, first.start, first.end, first.strand, first.annot, first.jMField, second.chrom,...&#8221;</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="annotateBAM.getArgs">
-<tt class="descclassname">annotateBAM.</tt><tt class="descname">getArgs</tt><big>(</big><big>)</big><a class="headerlink" href="#annotateBAM.getArgs" title="Permalink to this definition">¶</a></dt>
+<dt id="annotateBAM.getParser">
+<tt class="descclassname">annotateBAM.</tt><tt class="descname">getParser</tt><big>(</big><big>)</big><a class="headerlink" href="#annotateBAM.getParser" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
-
-<dl class="function">
-<dt id="annotateBAM.getGenes">
-<tt class="descclassname">annotateBAM.</tt><tt class="descname">getGenes</tt><big>(</big><em>gtfFile</em><big>)</big><a class="headerlink" href="#annotateBAM.getGenes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Stores genomic intervals of genes (including introns) and exons in dictionaries.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gtfFile</strong> &#8211; GTF file.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">[gene,exon] GenomicArrayOfSets, gene[genomic_iv]=set([geneID1,geneID2,...]), GenomicArrayOfSets, exon[genomic_iv]=&#8221;exon&#8221;</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="annotateBAM.getRepeats">
-<tt class="descclassname">annotateBAM.</tt><tt class="descname">getRepeats</tt><big>(</big><em>rFile</em><big>)</big><a class="headerlink" href="#annotateBAM.getRepeats" title="Permalink to this definition">¶</a></dt>
-<dd><p>Stores genomic intervals of repeats as HTSeq.GenomicArrayOfSets.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>rFile</strong> &#8211; BED file with the name of repeats on 4th column.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">HTSeq.GenomicArrayOfSets[genomic_iv]=set([repeatID])</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
 
 <dl class="function">
 <dt id="annotateBAM.main">
@@ -173,12 +97,12 @@
         <li class="right" >
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li><a href="index.html">rnadna 1 documentation</a> &raquo;</li> 
+        <li><a href="index.html">RNAchrom 0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
         &copy; Copyright 2014, mrivas.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2b2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>
