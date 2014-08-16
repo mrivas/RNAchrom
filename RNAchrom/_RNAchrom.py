@@ -307,3 +307,26 @@ def getBioType(gtfFile):
 		bioType[ ID ] = feature.attr["gene_biotype"]
 	
 	return bioType
+
+##########################################################
+# detectLinks
+##########################################################
+def loadMates(annotFile):
+	mates={}
+	for line in open(annotFile):
+		line=line.strip().split('\t')
+		# Ignore ambiguous mates
+		if line[1] == "ambiguous": continue
+		readName = line[0]
+		mates[ readName ] = {}               # read name
+		mates[ readName ][ 'Type' ]   = line[1] # read type: aware, blind
+		mates[ readName ][ 'iv1'] ]   = line[2] # mate1 iv
+		mates[ readName ][ 'annot1' ] = line[3] # mate1 annotation
+		mates[ readName ][ 'iv2' ]    = line[4] # mate2 iv
+		mates[ readName ][ 'annot2' ] = line[5] # mate2 annotation
+	return mates
+############################################################
+def buildLinks( mates ):
+	for read in mates:
+		if mates[read]
+
