@@ -48,3 +48,11 @@ Compute specificity of blind-links
    :module: specificity 
    :func: getParser
    :prog: specificity
+
+Detect strong interactions 
+==========================
+
+.. argparse::
+   :module: detectLinks
+   :func: getParser
+   :prog: detectLinks

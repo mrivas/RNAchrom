@@ -13,6 +13,9 @@ Contents:
 
    commandLineTools
 
+.. automodule:: _RNAchrom
+   :members:
+
 Indices and tables
 ==================
 

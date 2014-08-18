@@ -1,4 +1,4 @@
-import HTSeq, sys, numpy, random, scipy.stats, pickle
+import HTSeq, sys, numpy, random, scipy.stats, pickle, ast
 
 ################################################################
 def test():
@@ -104,6 +104,11 @@ def formatOutput(first,second,annotFirst,annotSecond):
 	return output
 ################################################################
 def chromLength(chromFile):
+	""" Creates a DICT of chromosome lengths.
+
+	:param chromFile: TXT file. TAB separated file where first and second columns correspond to chromosome name, and chromosome size (nt), respectively.
+	:returns: DICT. Dictionary where keys and values are chrom names and chrom sizes, respectively.
+	"""
 	chromLength={}
 	for line in open(chromFile,'r'):
 		line=line.strip().split("\t")
@@ -111,9 +116,13 @@ def chromLength(chromFile):
 	return chromLength
 ################################################################
 def ivReg(iv,chromLength,windSize):
-# Regularization of intervals. The iv are transformed 
-# to canonical regions. This to avoid partial overlappings, and to get 
-# well defined aimer and target windows
+	""" Regularization of intervals. The input iv is transformed to a canonical region. This to avoid partial overlapping, and to get well defined aimer and target windows.
+
+	:param iv: HTSeq.GenomicInterval. Genomic interval to be regularized.
+	:param chromLength: DICT. Dictionary of chromosome lengths.
+	:param windSize: INT. Window size in which the genome is divided.
+	:returns: HTSeq.GenomicInterval. Regularized genomic interval containing input iv. 
+	"""
 	chrom = iv.chrom
 	start = iv.start
 	end   = iv.end
@@ -139,7 +148,13 @@ def ivReg(iv,chromLength,windSize):
 	return reg_iv
 ################################################################
 def bed2peaks(File,chromLength,windSize):
-# Convert DNA-RNA links from BED to GenomicArrayOfSets format
+	"""Convert DNA-RNA links from BED to GenomicArrayOfSets format
+	
+	:param File: BED file. File name where ChIP-seq peaks are stored.
+	:param chromLength: DICT. Dictionary of chromosome lengths.
+	:param windSize: INT. Window size in which the genome is divided.
+	:returns: DICT. Number of peaks per genomic window. 
+	"""
 	coverage = {}
 	
 	for line in open(File,"r"):
@@ -153,7 +168,12 @@ def bed2peaks(File,chromLength,windSize):
 	return coverage
 ################################################################
 def lineToIv(line,dist):
-# Create iv for DNA and RNA mates 
+	""" Create iv for DNA and RNA mates
+
+	:param line: STR. Line from annotatedBAM.py output.
+	:param dist: INT. Distance between used as lower threshold to determine self-ligation.
+	:returns: ARRAY. [HTSeq.GenomicInterval,HTSeq.GenomicInterval,BOOL,BOOL,BOOL]. Fist mate genomic interval, second mate genomic interval, 
+	"""
 	line=line.split("\t")
 	coding1,coding2=False,False
 	selfLig=True
@@ -173,8 +193,16 @@ def lineToIv(line,dist):
 	return [iv1,iv2,coding1,coding2,selfLig]
 ################################################################
 def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
-# Convert DNA-RNA links from BED to GenomicArrayOfSets format
-
+	""" Convert DNA-RNA links from BED to GenomicArrayOfSets format
+	
+	:param bFile: TXT file. Annotated file of mates (output of annotateBAM.py).
+	:param chromLength: DICT. Dictionary of chromosome lengths.
+	:param windSize: INT. Window size in which the genome is divided.
+	:param checkExon: BOOL. Whether to check if RNA-mates overlapp exons.
+	:param dist: INT. Distance between used as lower threshold to determine self-ligation.
+	:param linkType: STR. Type of mates: "aware", or "blind". 
+	:returns: DICT[DICT]=INT. Dictionary of target per aimer. 	
+	"""
 	links = {}
 	
 	for line in open(bFile,"r"):
@@ -233,8 +261,11 @@ def bed2links(bFile,chromLength,windSize,checkExon,dist,linkType):
 	return links
 ##################################################################
 def genes(gtfFile):
-	# Get overla genomic regions per each annotated feature in the annotation file
-
+	""" Get overlap genomic regions per each annotated feature in the annotation file
+	
+	:param gtfFile: GTF file.
+	:returns: [DICT,DICT]. Dictionaries of gene id (key) gene iv (value), and gene iv (key) and gene id (value), respectively. 
+	"""
 	geneID_IV = {}
 	gtf_file = HTSeq.GFF_Reader( gtfFile )
 
@@ -258,8 +289,13 @@ def genes(gtfFile):
 	return geneID_IV,geneIV_ID
 #############################################################
 def counts(aFile,distance,geneIV_ID):
-	# Gets the counts of long range interactions for each gene
-
+	""" Gets the counts of long range interactions for each gene
+	
+	:param aFile: Annotated file of aware links (output of annotateBAM.py).
+	:oaran distance: INT. Distance between mates used a lower threshold to be call as not self-ligating.
+	:param genIV_ID: DICT. Dictionary where keys and values are gene genomic intervals and gene ids, respectively.
+	:returns: [DICT,DICT]. Array of dictionaries, corresponding to the count of DNA and RNA per gene id (key), respectively. 
+	"""
 	countsDNA = {}
 	countsRNA = {}
 	for line in open(aFile,"r"):
@@ -298,6 +334,11 @@ def counts(aFile,distance,geneIV_ID):
 	return [countsDNA, countsRNA]
 ######################################################
 def getBioType(gtfFile):
+	"""Creates a dictionary of biotypes per gene.
+
+	:param gtfFile: GTF file.
+	:returns: DICT. Keys and values are gene id and biotypes, respectively
+	"""
 	bioType={}
 	
 	gtf_file = HTSeq.GFF_Reader( gtfFile )
@@ -311,22 +352,174 @@ def getBioType(gtfFile):
 ##########################################################
 # detectLinks
 ##########################################################
-def loadMates(annotFile):
-	mates={}
+def loadMates(annotFile,Type,dist):
+	"""Creates a dictionary of mates. If input mates are blind, it infers aware-mates based on splicing information.
+
+	:param annotFile: TXT file. Annotation file (output of annotateBAM.py).
+	:param Type: STR. Type of links on annotFile. Could be: "aware" (second mate correspond to RNA-end), or "blind" (it's not known what mates correspond to the RNA-end).
+	:param dist: INT. Distance (nt) between mates to be considered not self-ligating (mates closer than this value are discarded).
+	:returns: DICT. Dictionary of mates, where the key is the geneID of the aimer, and the value, the interval of the target region. If Type=="aware", it output a single DICT of aware mates. If type=="blind", it output and array of two DICTs, the first are the inferred aware-mates, and the second the blind-mates.
+	"""
+	aware,inferred,blind={},{},{}
 	for line in open(annotFile):
 		line=line.strip().split('\t')
-		# Ignore ambiguous mates
-		if line[1] == "ambiguous": continue
-		readName = line[0]
-		mates[ readName ] = {}               # read name
-		mates[ readName ][ 'Type' ]   = line[1] # read type: aware, blind
-		mates[ readName ][ 'iv1'] ]   = line[2] # mate1 iv
-		mates[ readName ][ 'annot1' ] = line[3] # mate1 annotation
-		mates[ readName ][ 'iv2' ]    = line[4] # mate2 iv
-		mates[ readName ][ 'annot2' ] = line[5] # mate2 annotation
-	return mates
+		# Skip self-ligating mates
+		if min( abs(int(line[2])-int(line[7])), abs( int(line[1])-int(line[8]) )) > dist: continue
+		readName = line[12]    # read name
+		# If aware always first and second mates correspond to DNA and RNA, respectively 
+		if Type=="aware":
+			# Check consistency: DNA mates not spliced
+			DNA_SJs = ast.literal_eval(line[5])
+			spliced = False
+			for DNA_SJ in DNA_SJs:
+				if DNA_SJ >=0: spliced=True
+			if spliced : continue
+			# Check ambiguity: RNA end overlap one and only one gene
+			genes=line[10].split('|')[0].split(',')
+			if len(genes)>1 or genes[0]==".": continue
+			aware[ readName ] = {} # initialized dict
+			aware[ readName ][ 'geneName' ] = genes[0] # mate2 annotation
+			aware[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[0],int(line[1]),int(line[2]) ) # mate1 iv = dna iv
+		# Infer aware from blind-links
+		elif Type=="blind":
+			# Mates where one end has a known spliced junction, and the other is not spliced are inferred as aware-links
+			Iv1_SJs = ast.literal_eval(line[5])
+			Iv2_SJs = ast.literal_eval(line[11])
+			spliced1,spliced2=False,False
+			for Iv1_SJ in Iv1_SJs:
+				if Iv1_SJ >=0: spliced1=True
+			for Iv2_SJ in Iv2_SJs:
+				if Iv2_SJ >=0: spliced2=True
+			# Inferred aware-links
+			if (spliced1 + spliced2)==1: 
+			
+				if spliced1:   # Iv1 is the RNA-end
+					# Check ambiguity: RNA end overlap one and only one gene
+					genes=line[4].split('|')[0].split(',')
+					if len(genes)!=1 or genes[0]==".": continue
+					inferred[ readName ] = {}
+					inferred[ readName ][ 'geneName' ] = genes[0]
+					inferred[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[6],int(line[7]),int(line[8]) ) # mate2 iv = dna iv
+				elif spliced2: # Iv2 is the RNA-end
+					# Check ambiguity: RNA end overlap one and only one gene
+					genes=line[10].split('|')[0].split(',')
+					if len(genes)!=1 or genes[0]==".": continue
+					inferred[ readName ] = {}
+					inferred[ readName ][ 'geneName' ] = genes[0]
+					inferred[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[0],int(line[1]),int(line[2]) ) # mate1 iv = dna iv
+			# Blind-links
+			elif (spliced1 + spliced2)==0: # cases where both mates have sj are dicarded as ambiguous
+				# Annotate iv1 as rna iv (aimer)
+				genes=line[4].split('|')[0].split(',')
+				if len(genes)!=1 or genes[0]==".": continue
+				blind[ readName ] = {}
+				blind[ readName ][ 'geneName' ] = genes[0]
+				blind[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[6],int(line[7]),int(line[8]) ) # mate2 iv = dna iv
+				# Annotate iv2 as rna iv (aimer)
+				genes=line[10].split('|')[0].split(',')
+				if len(genes)!=1 or genes[0]==".": continue
+				blind[ readName ] = {}
+				blind[ readName ][ 'geneName' ] = genes[0]
+				blind[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[0],int(line[1]),int(line[2]) ) # mate1 iv = dna iv
+
+	if Type=="aware":
+		return aware
+	elif Type=="blind":
+		return [inferred,blind]
+
 ############################################################
-def buildLinks( mates ):
-	for read in mates:
-		if mates[read]
+def expandIv(iv,windSize):
+	"""Expand genomic interval
+
+	:param iv: HTSeq.GenomicInterval. Genomic interval to be expanded
+	:param windSize: INT. Final size of the expanded iv
+	:returns: HTSeq.GenomicInterval. Genomic interval centered at iv and with length windSize
+	"""
+	halfWind = round( float(windSize)/2 )
+	iv.start = max(iv.start - halfWind,0)
+	iv.end   = iv.end   + halfWind
+	return iv
+############################################################
+def std(readName_ivs):
+	"""Computes standard deviation of a list of genomic intervals
+
+	:param iv_array: ARRAY[ HTSeq.GenomicInterval ]. Array of genomic intervals.
+	:returns: INT. Standard deviation of input genomic intervals.
+	"""
+	mindpoints = []
+	for readName_iv in readName_ivs:
+		iv=readName_iv.split("_")[1]
+		start=iv.split("-")[0]
+		end=iv.split("-")[1]
+		midpoints.append( numpy.mean([start,end]) )
+	return numpy.std(midpoints)
+############################################################
+def buildLinks( awareMates,blindMates, windSize,genesID_IV, oFile ):
+	"""Count hits of aware and blind-mates. It determine target areas based on aware-mates. 
+
+	:param awareMates: DICT. Dictionary of aware mates.
+	:param blindMates: DICT. Dictionary of blind mates.
+	:param windSize: INT. Window size of expanded target mates.
+	:param genes: DICT. Dictionary of genes' genomic intervals, where keys are gene ids and values HTSeq.GenomicIntervals.
+	:param oFile: STR. Name of output TAB separated file, where results will be stored. The output format is: geneName geneid_iv target_iv awareCounts awareSD blindCounts blindSD.
+	"""
+	# Define targets using aware-links as seeds
+	targetAreas = {}
+	for readName in awareMates:
+		geneName = awareMates[readName]['geneName']
+		targetIvExp = expandIv( awareMates[readName]['targetIv'], windSize)
+
+		# Determine targets' areas
+		if not ( geneName in targetAreas ):
+			targetAreas[ geneName ] = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+			targetAreas[ geneName ][ targetIvExp ] += "hit"
+		else:
+			targetAreas[ geneName ][ targetIvExp ] += "hit" 
+	
+	awareHits,blindHits= {},{}
+	# Create dictionary of genomic array of sets for aware links
+	for readName in awareMates:
+		geneName = awareMates[readName]['geneName']
+		targetIv = awareMates[readName]['targetIv']
+		if not ( geneName in awareHits ):
+			awareHits[ geneName ] = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+			awareHits[ geneName ][ targetIv ] += readName+"_"+str(targetIv.start)+"-"+str(targetIv.end)
+		else:
+			awareHits[ geneName ][ targetIv ] += readName+"_"+str(targetIv.start)+"-"+str(targetIv.end) 
+	# Create dictionary of genomic array of sets for blind links
+	for readName in blindMates:
+		geneName = blindMates[readName]['geneName']
+		targetIv = blindMates[readName]['targetIv']
+		if not ( geneName in blindHits ):
+			blindHits[ geneName ] = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+			blindHits[ geneName ][ targetIv ] += readName+"_"+str(targetIv.start)+"-"+str(targetIv.end)
+		else:
+			blindHits[ geneName ][ targetIv ] += readName+"_"+str(targetIv.start)+"-"+str(targetIv.end) 
+	
+	out = open(oFile,'w')
+	# Count and print hits on target areas
+	for geneName in targetAreas:
+		for target_iv,target_val in targetAreas[geneName].steps():
+			if len(target_val)==0: continue # skip empty (no seeded) areas
+			# Count number of aware hits on target_iv
+			iset = None
+			for awareHits_iv,awareHits_val in awareHits[geneName][target_iv].steps():
+				if iset is None: iset = awareHits_val.copy()
+				else:            iset.itersection_update( awareHits_val )
+			awareCounts = len( iset )
+			awareSD    = std( iset )
+			# Count number of blind hits on target_iv
+			iset = None
+			for blindHits_iv,blindHits_val in blindHits[geneName][target_iv].steps():
+				if iset is None: iset = blindHits_val.copy()
+				else:            iset.itersection_update( blindHits_val )
+			blindCounts = len( iset )
+			blindSD    = std( iset )
+			# Print results
+			geneID=geneName.split('-')[0]
+			output = [geneName,genesID_IV[geneID],target_iv,awareCounts,awareSD,blindCounts,blindSD]
+			print >>out, '\t'.join(map(str,output))
+	out.close()
+
+
 
