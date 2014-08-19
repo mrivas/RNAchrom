@@ -19,20 +19,20 @@ def getParser():
 
 ###########################################################
 def main():
-#	args = getParser().parse_args()
-#	aFile = args.aFile
-#	bFile = args.bFile
-#	gtfFile = args.gFile
-#	windSize = args.windSize
-#	dist = args.dist
-#	oFile = args.oFile
+	args = getParser().parse_args()
+	aFile = args.aFile
+	bFile = args.bFile
+	gtfFile = args.gFile
+	windSize = args.windSize
+	dist = args.dist
+	oFile = args.oFile
 
-	aFile="/data2/rivasas2/rnadna/TwoSteps/allReads/annotations/mm9/TwoStep1024.aware_rmdup_annotatedBAM.bed"
-	bFile="/data2/rivasas2/rnadna/TwoSteps/allReads/annotations/mm9/TwoStep1024.blind_rmdup_annotatedBAM.bed"
-	gtfFile="/home/rivasas2/tools/genomes/mouse/mm9/Mus_musculus.NCBIM37.67_chr.gtf"
-	windSize=10000
-	dist=10000
-	oFile="test.txt"
+#	aFile="/data2/rivasas2/rnadna/TwoSteps/allReads/annotations/mm9/TwoStep1024.aware_rmdup_annotatedBAM.bed"
+#	bFile="/data2/rivasas2/rnadna/TwoSteps/allReads/annotations/mm9/TwoStep1024.blind_rmdup_annotatedBAM.bed"
+#	gtfFile="/home/rivasas2/tools/genomes/mouse/mm9/Mus_musculus.NCBIM37.67_chr.gtf"
+#	windSize=10000
+#	dist=10000
+#	oFile="test.txt"
 
 	# Classify mates as aware or blind. Ambiguous mates are discarded
 	# Aware mates are: know and infered. However, if the DNA mates has a know sj the aware mates is dicarded

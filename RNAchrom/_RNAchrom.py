@@ -376,7 +376,9 @@ def loadMates(annotFile,Type,dist):
 			if spliced : continue
 			# Check ambiguity: RNA end overlap one and only one gene
 			genes=line[10].split('|')[0].split(',')
+			exon=line[10].split('|')[-2]
 			if len(genes)>1 or genes[0]==".": continue
+			if exon!="exon": continue
 			aware[ readName ] = {} # initialized dict
 			aware[ readName ][ 'geneName' ] = genes[0] # mate2 annotation
 			aware[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[0],int(line[1]),int(line[2]) ) # mate1 iv = dna iv
@@ -396,14 +398,18 @@ def loadMates(annotFile,Type,dist):
 				if spliced1:   # Iv1 is the RNA-end
 					# Check ambiguity: RNA end overlap one and only one gene
 					genes=line[4].split('|')[0].split(',')
+					exon=line[4].split('|')[-2]
 					if len(genes)!=1 or genes[0]==".": continue
+					if exon!="exon": continue
 					inferred[ readName ] = {}
 					inferred[ readName ][ 'geneName' ] = genes[0]
 					inferred[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[6],int(line[7]),int(line[8]) ) # mate2 iv = dna iv
 				elif spliced2: # Iv2 is the RNA-end
 					# Check ambiguity: RNA end overlap one and only one gene
 					genes=line[10].split('|')[0].split(',')
+					exon=line[10].split('|')[-2]
 					if len(genes)!=1 or genes[0]==".": continue
+					if exon!="exon": continue
 					inferred[ readName ] = {}
 					inferred[ readName ][ 'geneName' ] = genes[0]
 					inferred[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[0],int(line[1]),int(line[2]) ) # mate1 iv = dna iv
@@ -411,13 +417,17 @@ def loadMates(annotFile,Type,dist):
 			elif (spliced1 + spliced2)==0: # cases where both mates have sj are dicarded as ambiguous
 				# Annotate iv1 as rna iv (aimer)
 				genes=line[4].split('|')[0].split(',')
+				exon=line[4].split('|')[-2]
 				if len(genes)!=1 or genes[0]==".": continue
+				if exon!="exon": continue
 				blind[ readName ] = {}
 				blind[ readName ][ 'geneName' ] = genes[0]
 				blind[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[6],int(line[7]),int(line[8]) ) # mate2 iv = dna iv
 				# Annotate iv2 as rna iv (aimer)
 				genes=line[10].split('|')[0].split(',')
+				exon=line[10].split('|')[-2]
 				if len(genes)!=1 or genes[0]==".": continue
+				if exon!="exon": continue
 				blind[ readName ] = {}
 				blind[ readName ][ 'geneName' ] = genes[0]
 				blind[ readName ][ 'targetIv' ] = HTSeq.GenomicInterval(line[0],int(line[1]),int(line[2]) ) # mate1 iv = dna iv
@@ -436,8 +446,9 @@ def expandIv(iv,windSize):
 	:returns: HTSeq.GenomicInterval. Genomic interval centered at iv and with length windSize
 	"""
 	halfWind = round( float(windSize)/2 )
-	iv.start = max(iv.start - halfWind,0)
-	iv.end   = iv.end   + halfWind
+	midpoint = numpy.mean([iv.start,iv.end])
+	iv.start = max(midpoint - halfWind,0)
+	iv.end   = midpoint   + halfWind
 	return iv
 ############################################################
 def std(readName_ivs):
@@ -446,11 +457,11 @@ def std(readName_ivs):
 	:param iv_array: ARRAY[ HTSeq.GenomicInterval ]. Array of genomic intervals.
 	:returns: INT. Standard deviation of input genomic intervals.
 	"""
-	mindpoints = []
+	midpoints = []
 	for readName_iv in readName_ivs:
 		iv=readName_iv.split("_")[1]
-		start=iv.split("-")[0]
-		end=iv.split("-")[1]
+		start=int(iv.split("-")[0])
+		end=int(iv.split("-")[1])
 		midpoints.append( numpy.mean([start,end]) )
 	return numpy.std(midpoints)
 ############################################################
@@ -464,20 +475,28 @@ def buildLinks( awareMates,blindMates, windSize,genesID_IV, oFile ):
 	:param oFile: STR. Name of output TAB separated file, where results will be stored. The output format is: geneName geneid_iv target_iv awareCounts awareSD blindCounts blindSD.
 	"""
 	# Define targets using aware-links as seeds
-	targetAreas = {}
+	targetFrags = {} # target fragments
 	for readName in awareMates:
 		geneName = awareMates[readName]['geneName']
 		targetIvExp = expandIv( awareMates[readName]['targetIv'], windSize)
 
 		# Determine targets' areas
-		if not ( geneName in targetAreas ):
-			targetAreas[ geneName ] = HTSeq.GenomicArrayOfSets("auto",stranded=False)
-			targetAreas[ geneName ][ targetIvExp ] += "hit"
+		if not ( geneName in targetFrags ):
+			targetFrags[ geneName ] = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+			targetFrags[ geneName ][ targetIvExp ] += "hit"
 		else:
-			targetAreas[ geneName ][ targetIvExp ] += "hit" 
-	
-	awareHits,blindHits= {},{}
+			targetFrags[ geneName ][ targetIvExp ] += "hit" 
+	# Consolidate target areas
+	targetAreas = {}
+	for geneName in targetFrags:
+		for iv, val in targetFrags[geneName].steps():
+			if len(val)==0: continue
+			if not( geneName in targetAreas):
+				targetAreas[geneName] = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+			targetAreas[geneName][iv] += iv
+
 	# Create dictionary of genomic array of sets for aware links
+	awareHits = {}
 	for readName in awareMates:
 		geneName = awareMates[readName]['geneName']
 		targetIv = awareMates[readName]['targetIv']
@@ -487,6 +506,7 @@ def buildLinks( awareMates,blindMates, windSize,genesID_IV, oFile ):
 		else:
 			awareHits[ geneName ][ targetIv ] += readName+"_"+str(targetIv.start)+"-"+str(targetIv.end) 
 	# Create dictionary of genomic array of sets for blind links
+	blindHits = {}
 	for readName in blindMates:
 		geneName = blindMates[readName]['geneName']
 		targetIv = blindMates[readName]['targetIv']
@@ -505,16 +525,20 @@ def buildLinks( awareMates,blindMates, windSize,genesID_IV, oFile ):
 			iset = None
 			for awareHits_iv,awareHits_val in awareHits[geneName][target_iv].steps():
 				if iset is None: iset = awareHits_val.copy()
-				else:            iset.itersection_update( awareHits_val )
+				else:            iset.intersection_update( awareHits_val )
 			awareCounts = len( iset )
 			awareSD    = std( iset )
 			# Count number of blind hits on target_iv
-			iset = None
-			for blindHits_iv,blindHits_val in blindHits[geneName][target_iv].steps():
-				if iset is None: iset = blindHits_val.copy()
-				else:            iset.itersection_update( blindHits_val )
-			blindCounts = len( iset )
-			blindSD    = std( iset )
+			if geneName in blindHits:
+				iset = None
+				for blindHits_iv,blindHits_val in blindHits[geneName][target_iv].steps():
+					if iset is None: iset = blindHits_val.copy()
+					else:            iset.intersection_update( blindHits_val )
+				blindCounts = len( iset )
+				blindSD    = std( iset )
+			else: # Cases where there aren't blind-links supporting aware-links
+				blindCounts = 0
+				blindSD = "nan"
 			# Print results
 			geneID=geneName.split('-')[0]
 			output = [geneName,genesID_IV[geneID],target_iv,awareCounts,awareSD,blindCounts,blindSD]
@@ -522,4 +546,14 @@ def buildLinks( awareMates,blindMates, windSize,genesID_IV, oFile ):
 	out.close()
 
 
+	print "Save objects to file"
+	out=open(oFile+"_targetAreas.pkl","w")
+	pickle.dump(targetAreas,out)
+	out.close()
+	out=open(oFile+"_awareMates.pkl","w")
+	pickle.dump(awareMates,out)
+	out.close()
+	out=open(oFile+"_blindMates.pkl","w")
+	pickle.dump(blindMates,out)
+	out.close()
 
