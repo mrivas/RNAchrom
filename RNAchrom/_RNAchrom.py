@@ -525,7 +525,7 @@ def buildLinks( awareMates,blindMates, windSize,genesID_IV, oFile ):
 			iset = None
 			for awareHits_iv,awareHits_val in awareHits[geneName][target_iv].steps():
 				if iset is None: iset = awareHits_val.copy()
-				else:            iset.intersection_update( awareHits_val )
+				else:            iset |= awareHits_val
 			awareCounts = len( iset )
 			awareSD    = std( iset )
 			# Count number of blind hits on target_iv
@@ -533,9 +533,13 @@ def buildLinks( awareMates,blindMates, windSize,genesID_IV, oFile ):
 				iset = None
 				for blindHits_iv,blindHits_val in blindHits[geneName][target_iv].steps():
 					if iset is None: iset = blindHits_val.copy()
-					else:            iset.intersection_update( blindHits_val )
-				blindCounts = len( iset )
-				blindSD    = std( iset )
+					else:            iset |= blindHits_val
+				if len(iset)!=0 :
+					blindCounts = len( iset )
+					blindSD    = std( iset )
+				else:
+					blindCounts = 0
+					blindSD    = "nan"
 			else: # Cases where there aren't blind-links supporting aware-links
 				blindCounts = 0
 				blindSD = "nan"
