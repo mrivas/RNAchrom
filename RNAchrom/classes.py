@@ -58,72 +58,67 @@ class interactions():
 class links:
 	def __init__(self):
 		self.links = HTSeq.GenomicArrayOfSets("auto",stranded=False)
-
 	def __setitem__(self,readName,tup):
 		gene,iv = tup
 		coord=str(iv.start)+"-"+str(iv.end)
 		self.links[iv] += readName+"_"+coord+"_"+gene # We add readName as suffix to avoid discard different hist from the same gene
-
-	def filterByGene(self,reads,aimerGene):
-		x=[]
+	def filterReadsByGene(self,reads,aimerGene):
+		x=set([])
 		if len(reads)==0:
 			return x
 		for read in reads:
 			readName,coord,gene = read.split("_")
 			if gene == aimerGene:
-				x.append( coord )
+				x.add( read )
 		return x
-
-	def std(self,coords):
+	def getSD(self,uset):
 		"""Computes standard deviation of a list of genomic intervals
 
 		:param iv_array: ARRAY[ HTSeq.GenomicInterval ]. Array of genomic intervals.
 		:returns: INT. Standard deviation of input genomic intervals.
 		"""
 		midpoints = []
-		for coord in coords:
-			start,end=coord.split("-")
+		for read in uset:
+			start,end=read.split("_")[1].split("-")
 			start,end=int(start),int(end)
 			midpoints.append( numpy.mean([start,end]) )
 		return numpy.std(midpoints)
-
-	def count(self,aimerGene,targetIV):
-		hits = []	
+	def getCount(self,aimerGene,targetIV):
+		uset = set([])	# union set
 		for iv,reads in self.links[targetIV].steps():
-			hits += self.filterByGene(reads,aimerGene)
-		self.count = len(hits)
-		if self.count!=0:
-			self.sd     = self.std(hits)
+			uset |= self.filterReadsByGene(reads,aimerGene)
+		count = len(uset)
+		if count!=0:
+			sd     = self.getSD(uset)
 		else:
-			self.sd     = "nan"
-		return [self.count,self.sd]
-			
+			sd     = "nan"
+		return [count,sd]
 #########################################	
 
 # Build target regions and awareHits
 awareMates=RNAchrom.annotReader(awareAnnot)
-awareHits=RNAchrom.links()
-interactions=RNAchrom.interactions()
+awareLinks=RNAchrom.links()
+interactions=RNAchrom.interactions(windSize)
 for mates in awareMates:
 	if not( len(mates.secondGenes)==1 and mates.secondGenes!="." and mates.secondExon=="exon" and mates.firstSJs==-1 and mates.dist>dist ):
 		continue 
 	interactions[ mates.secondGenes[0] ] = mates.firstIV
-	awareReads[   mates.readName] = [mates.secondGenes[0], mates.firstIV ]
-# Build blindHits
+	awareLinks[   mates.readName       ] = [mates.secondGenes[0], mates.firstIV ]
+# Build blindLinks and add inferred aware-links to awareLinks
 blindMates=RNAchrom.annotReader(blindAnnot)
+blindLinks=RNAchrom.links()
 for mates in blindMates:
 	if not( len(mates.secondGenes)==1 and mates.secondGenes!="." and mates.secondExon=="exon" and mates.firstSJs==-1 and mates.dist>dist ):
 		continue 
-	blindHits[mates.firstIV ] += mates.secondGenes[0]+"_"+mates.readName
-	blindHits[mates.secondIV] += mates.firstGenes[0]+"_"+mates.readName
+	blindLinks[mates.readName ] = [mates.secondGenes[0], mates.firstIV  ]
+	blindLinks[mates.readName ] = [mates.firstGenes[0] , mates.secondIV ]
 
 # Count hits on targets
-for aimerGene, targetIVs in interactions:
-	for targetIV in targetIVs:
-		awareCount,awareSD = awareHits.count( aimerGene, targetIV )
-		blindCount,blindSD = awareHits.count( aimerGene, targetIV )
+for aimerGene, targetIV in interactions:
+	awareCount,awareSD = awareLinks.count( aimerGene, targetIV )
+	blindCount,blindSD = blindLinks.count( aimerGene, targetIV )
 		
-		print >>out, aimerGene, geneIV[aimerGene],codingSize[aimerGene],targetIV,awareCount,awareSD,blindCount,blindSD
+	print >>out, aimerGene, geneIV[aimerGene],codingSize[aimerGene],targetIV,awareCount,awareSD,blindCount,blindSD
 
 
 
