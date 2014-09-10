@@ -12,9 +12,7 @@ Contents:
    :maxdepth: 2
 
    commandLineTools
-
-.. automodule:: _RNAchrom
-   :members:
+   packageFunctions
 
 Indices and tables
 ==================
