@@ -11,8 +11,10 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   overview
+   installation
+   exampleCase
    commandLineTools
-   packageFunctions
 
 Indices and tables
 ==================

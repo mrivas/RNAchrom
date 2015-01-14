@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Search &mdash; RNAchrom 0 documentation</title>
+  <title>Prerequisites and installation &mdash; RNAchrom 0 documentation</title>
   
 
   
@@ -28,7 +28,9 @@
   
 
   
-    <link rel="top" title="RNAchrom 0 documentation" href="index.html"/> 
+    <link rel="top" title="RNAchrom 0 documentation" href="index.html"/>
+        <link rel="next" title="Example case" href="exampleCase.html"/>
+        <link rel="prev" title="Overview" href="overview.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -44,7 +46,7 @@
       <div class="wy-side-nav-search">
         <a href="index.html" class="fa fa-home"> RNAchrom</a>
         <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -55,11 +57,11 @@
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
         
-            <ul>
+            <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Prerequisites and installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#prerequisites">Prerequisites</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-on-linux">Installation on Linux</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Prerequisites and installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation-on-linux">Installation on Linux</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="exampleCase.html">Example case</a><ul>
@@ -101,8 +103,10 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li></li>
+    <li>Prerequisites and installation</li>
       <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/installation.txt" rel="nofollow"> View page source</a>
         
       </li>
   </ul>
@@ -110,22 +114,53 @@
 </div>
           <div role="main">
             
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
-    </p>
-  </div>
-  </noscript>
+  <div class="section" id="prerequisites-and-installation">
+<span id="installation"></span><h1>Prerequisites and installation<a class="headerlink" href="#prerequisites-and-installation" title="Permalink to this headline">¶</a></h1>
+<p>RNAchrom source code, installation scripts, and source code of this website are available at</p>
+<blockquote>
+<div><a href="#id1"><span class="problematic" id="id2">`RNAchrom github page`_</span></a></div></blockquote>
+<div class="section" id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline">¶</a></h2>
+<p>To use RNAchrom, you need at least version 2.5 of <a class="reference external" href="http://www.python.org/">Python</a>.</p>
+</div>
+<div class="section" id="installation-on-linux">
+<h2>Installation on Linux<a class="headerlink" href="#installation-on-linux" title="Permalink to this headline">¶</a></h2>
+<p>RNAchrom installation package will take care of all dependencies. You just need to download the <em>source</em> files, unzip them, and go into the unzipped directory.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>wget https://github.com/mrivas/RNAchrom/archive/master.zip RNAchrom.zip
+<span class="nv">$ </span>unzip RNAchrom.zip
+<span class="nv">$ </span><span class="nb">cd </span>RNAchrom
+</pre></div>
+</div>
+<p>To install RNAchrom locally ( only for the current user in case you don&#8217;t have super-user permission) type</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>python setup.py install --user
+</pre></div>
+</div>
+<p>To make RNAchrom available to all users, use instead</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>python setup.py build
+<span class="nv">$ </span>sudo python setup.py install
+</pre></div>
+</div>
+<p>To test the installation</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="nv">$ </span>python
+&gt;&gt; import RNAchrom
+</pre></div>
+</div>
+<p>if no errors are reported, your are all set.</p>
+</div>
+</div>
 
-  
-  <div id="search-results">
-  
-  </div>
 
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="exampleCase.html" class="btn btn-neutral float-right" title="Example case"/>Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="overview.html" class="btn btn-neutral" title="Overview"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -162,7 +197,6 @@
       <script type="text/javascript" src="_static/underscore.js"></script>
       <script type="text/javascript" src="_static/doctools.js"></script>
       <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-      <script type="text/javascript" src="_static/searchtools.js"></script>
 
   
 
@@ -178,14 +212,7 @@
           SphinxRtdTheme.StickyNav.enable();
       });
   </script>
-  
-  <script type="text/javascript">
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script type="text/javascript" id="searchindexloader"></script>
    
-
 
 </body>
 </html>
