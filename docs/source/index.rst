@@ -12,8 +12,11 @@ Contents:
    :maxdepth: 2
 
    overview
+
    installation
+   
    exampleCase
+   
    commandLineTools
 
 Indices and tables

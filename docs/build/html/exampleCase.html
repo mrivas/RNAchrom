@@ -66,8 +66,9 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">Example case</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#data-summary">Data summary</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#reads-alignment">Reads Alignment</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#interesting-cases-rna-over-dna-enriched-genes">Interesting cases: RNA over DNA enriched genes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inferred-aware-links">Inferred aware-links</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#bibliography">Bibliography</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="commandLineTools.html">Command Line Utilites</a><ul>
@@ -116,71 +117,70 @@
             
   <div class="section" id="example-case">
 <span id="examplecase"></span><h1>Example case<a class="headerlink" href="#example-case" title="Permalink to this headline">¶</a></h1>
+<p>RNA-chromatin interactome libraries are, in their raw form, paired-end sequencing libraries. Each RNA-chromatin link correspond to a read pair where one mate comes from the RNA aimer and the other from its chromatin target. For brevity, we&#8217;ll call these as RNA-end and DNA-end, respectively. In the same fashion, we&#8217;ll call the gene sources of the RNA-ends as aimer genes.</p>
 <div class="section" id="data-summary">
 <h2>Data summary<a class="headerlink" href="#data-summary" title="Permalink to this headline">¶</a></h2>
-<p>TwoStep1024 and TwoStep1219</p>
-</div>
-<div class="section" id="reads-alignment">
-<h2>Reads Alignment<a class="headerlink" href="#reads-alignment" title="Permalink to this headline">¶</a></h2>
-<p>We aligned the paired-end reads with STAR [Dobin2013], allowing up to 2 mismatches and restricting the intron size (for mates spanning a spliced junction) to less than 10k nt. Reads were divided into two sets: one where at at least one mate of each pair contains the linker sequence, and another where both mates of each pair doesn’t contain the linker sequence (see Figure <a href=".html#alignment_diagram"></a><tt class="xref num docutils literal"><span class="pre">#alignment_diagram</span></tt>). The first set was further split into RNA and DNA mates (based on the direction of the linker sequence; reads were the linker sequence was on the flanking regions were discarded), and paired-end aligned to produce aware-links. The second set was paired-end aligned to produce blind-links. In all cases duplicates were removed. For libraries TwoStep1024 and TwoStep1219, this resulted in 18M links for both libraries, from where 7k and 5k were aware links (see Table1)</p>
+<p>We generated two RNA-chromatin interactome libraries on mouse E14: TwoStep1024, and TwoStep1219 (see Table 1). For each library, links were divided into two sets:</p>
+<ul class="simple">
+<li><strong>Aware links</strong>, where at least one end of each link contained the linker sequence. Based on the direction of the linker sequence, each mate could be resolved as RNA-end or DNA-end.</li>
+<li><strong>Blind links</strong>, where linker sequences were absent in both link&#8217;s ends. Therefore, there was not direct way to map mates into RNA-end and DNA-ends.</li>
+</ul>
+<p>As the RNA-ends were expected to span splice junctions, we used STAR &#8211;as splice tolerant aligner <a class="reference internal" href="#dobin2013" id="id1">[1]</a>&#8211; to map the reads against mm9. For all sets, we allowed up to 2 mismatches, restricted the intron size to less than 10k nt, and removed duplicates (Figure <a href="#alignment-diagram"> 1</a>). For libraries TwoStep1024 and TwoStep1219, this resulted in 16M links, among them where 6k and 4k aware links, respectively (see Table1).</p>
 <div class="figure" id="alignment-diagram">
 <a class="reference internal image-reference" href="https://132.239.135.28/public/RNAchrom/files/exampleCase/alignment_diagram.svg"><img src="https://132.239.135.28/public/RNAchrom/files/exampleCase/alignment_diagram.svg" width="90%" /></a>
-<p class="caption">Figure 1: Construction of blind and aware-links. Paired-end fastq files (fastq1,2) were aligned using STAR (Dobin 2013) allowing for up to 2 mismatches. On one hand, reads not containing the linker sequence resulted in aligned (mates’ distance &lt;600k) and chimeric (mates’s distance &gt;600k, or on different chromosomes) alignments, both of them used to build blind-links. On the other hand, reads containing the linker sequence in were splitted into DNA and RNA fragments (determined by the removed linker sequence orientation) and then aligned to build aware-links.</p>
+<p class="caption">Figure 1: Construction of blind and aware-links. Paired-end fastq files (fastq1,2) were aligned using STAR (Dobin 2013) allowing for up to 2 mismatches. On one hand, reads not containing the linker sequence resulted in aligned (mates’ distance &lt;10k) and chimeric (mates’s distance &gt;600k, or on different chromosomes) alignments, both of them used to build blind-links. On the other hand, reads containing the linker sequence in were splitted into DNA and RNA fragments (determined by the removed linker sequence orientation) and then aligned to build aware-links.</p>
 </div>
 <table border="1" class="docutils">
-<caption>Table1: Number of links per library. In parenthesis the % of links overlapping exons in at least one mate for all links and on the RNA mate of aware-links.</caption>
+<caption>Table1: Number of links per library. To compute the % of links overlapping exons, we requiered at least one mate on a pair should overlap an exon.</caption>
 <colgroup>
-<col width="17%" />
-<col width="17%" />
-<col width="17%" />
-<col width="17%" />
-<col width="17%" />
-<col width="17%" />
+<col width="20%" />
+<col width="20%" />
+<col width="20%" />
+<col width="20%" />
+<col width="20%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Sample</th>
-<th class="head"># all-links</th>
-<th class="head"># aware-links</th>
-<th class="head">&nbsp;</th>
-<th class="head">&nbsp;</th>
-<th class="head">&nbsp;</th>
+<th class="head"># aware pairs (% uniquely aligned)</th>
+<th class="head"># blind pairs (% uniquely aligned)</th>
+<th class="head"># aware links (% overlapping exons)</th>
+<th class="head">blind links (% overlapping exons)</th>
 </tr>
 </thead>
 <tbody valign="top">
 <tr class="row-even"><td>TwoSteps1024</td>
-<td>18</td>
-<td>053</td>
-<td>131 (9.53%)</td>
-<td>6</td>
-<td>898 (6.07%)</td>
+<td>105,657 (48.88)</td>
+<td>29,505,340 (75.01)</td>
+<td>5,996 (9.9)</td>
+<td>15,752,812 (9.52)</td>
 </tr>
 <tr class="row-odd"><td>TwoSteps1219</td>
-<td>18</td>
-<td>048</td>
-<td>508 (8.30%)</td>
-<td>5</td>
-<td>015 (4.62%)</td>
+<td>71,981 (48.53)</td>
+<td>31,765,882 (78.84)</td>
+<td>4,357 (7.64)</td>
+<td>16,522,999 (7.98)</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Inter-chromosomal links</strong> were found only among-blind links: 509 and 368 for libraries TwoSteps1024 an TwoSteps1219, respectively.</p>
 </div>
 <div class="section" id="interesting-cases-rna-over-dna-enriched-genes">
 <h2>Interesting cases: RNA over DNA enriched genes<a class="headerlink" href="#interesting-cases-rna-over-dna-enriched-genes" title="Permalink to this headline">¶</a></h2>
-<p>We use aware-links to determine candidate cases for aimers, i.e., genes that interact with distal genomic regions. For the genomic region of each gene, interesting cases were judged based on their RNA over DNA-ends ratio. Compared to DNA-mates, RNA-mates should be more concentrated on aimer genes as these contain both:</p>
+<p>We use aware-links to determine the genes interacting with distal genomic regions. For the genomic region of each gene, interesting cases were judged based on their RNA over DNA-ends ratio. The basic idea is that compared to DNA-end, RNA-ends should be more concentrated on aimer genes as these contain both:</p>
 <ol class="arabic simple">
 <li>links reaching other genes (targets of the current gene) and,</li>
 <li>links of self-ligation (DNA of the current gene binding its owns nascent mRNA).</li>
 </ol>
-<p>Exceptions to this would be DNA regions that are targets of other aimers. To test whether this is the case we computed the distributions of RNA and DNA ends only using aware-links overlapping coding regions. The histograms of RNA and DNA-ends per gene (Figure <a href=".html#matesoverlength"></a><tt class="xref num docutils literal"><span class="pre">#matesOverLength</span></tt>) are not only clearly different (negative skewness Figure <a href=".html#ratios"></a><tt class="xref num docutils literal"><span class="pre">#ratios</span></tt>), but the mean value of RNA-ends per gene is bigger than its equivalent on DNA, meaning that most genes contain more RNA than DNA ends. Thus, there are clear cases where the number of RNA is bigger than the number of DNA-mates. We focus on those for candidates. To stress the RNA over DNA enrichment we computed their ratio per genomic region (Figure <a href=".html#ratios"></a><tt class="xref num docutils literal"><span class="pre">#ratios</span></tt>) and select the top 25%.</p>
-<div class="figure" id="matesoverlength">
+<p>Exceptions to this would be genes that are themselves targets of other aimers. To test whether this is a generalized case we computed the distributions of RNA and DNA-ends only using aware-links overlapping coding regions. The histograms of RNA and DNA-ends per gene (Figure <a href="#mates-over-length"> 2</a>) are not only clearly different (negative skewness Figure <a href="#ratios"> 3</a>), but the mean value of RNA-ends per gene is bigger than its equivalent on DNA, meaning that most genes contain more RNA than DNA ends. Thus, there are clear cases where the number of RNA-ends is bigger than the number of DNA-ends. We focused on those as candidates. To stress the RNA over DNA enrichment we computed their ratio per genomic region (Figure <a href="#ratios"> 3</a>) and select the top 25%.</p>
+<div class="figure" id="mates-over-length">
 <a class="reference internal image-reference" href="https://132.239.135.28/public/RNAchrom/files/exampleCase/matesOverLength.svg"><img src="https://132.239.135.28/public/RNAchrom/files/exampleCase/matesOverLength.svg" width="90%" /></a>
 <p class="caption">Figure 2: Distribution of DNA and RNA mates per gene. All values were normalized by gene length.</p>
 </div>
-<div class="figure" id="rations">
+<div class="figure" id="ratios">
 <a class="reference internal image-reference" href="https://132.239.135.28/public/RNAchrom/files/exampleCase/ratios.svg"><img src="https://132.239.135.28/public/RNAchrom/files/exampleCase/ratios.svg" width="90%" /></a>
 <p class="caption">Figure 3: Distribution of RNA over DNA reads per gene. All values were normalzied by gene length. Red line correspond to 75% quantile.</p>
 </div>
-<p>This resulted in 4 candidates protein coding genes that are shared among replicates (see Table2).</p>
+<p>This resulted in 2 candidates genes that are shared among replicates (see Table 2).</p>
 <table border="1" class="docutils">
 <caption>Table 2: Candidate genes shared among replicates.</caption>
 <colgroup>
@@ -193,58 +193,48 @@
 <col width="14%" />
 </colgroup>
 <thead valign="bottom">
-<tr class="row-odd"><th class="head">Gene</th>
+<tr class="row-odd"><th class="head">Gene ensemble ID</th>
+<th class="head">gene name</th>
 <th class="head">Length (nt)</th>
 <th class="head">Biotype</th>
 <th class="head"># DNA mates</th>
 <th class="head"># RNA mates</th>
 <th class="head">Enrichment</th>
-<th class="head">&nbsp;</th>
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td>ENSMUSG00000058537</td>
-<td>3</td>
-<td>408</td>
-<td>protein coding</td>
-<td>0</td>
-<td>1</td>
-<td>0.693</td>
-</tr>
-<tr class="row-odd"><td>ENSMUSG00000075014</td>
-<td>755</td>
-<td>protein coding</td>
-<td>0</td>
-<td>4</td>
-<td>1.61</td>
-<td>&nbsp;</td>
-</tr>
 <tr class="row-even"><td>ENSMUSG00000078942</td>
-<td>36</td>
-<td>554</td>
+<td>Naip6</td>
+<td>36,554</td>
 <td>protein coding</td>
 <td>0</td>
 <td>1</td>
 <td>0.693</td>
 </tr>
 <tr class="row-odd"><td>ENSMUSG00000018906</td>
-<td>31</td>
-<td>571</td>
+<td>P4ha2</td>
+<td>31,571</td>
 <td>protein coding</td>
 <td>0</td>
 <td>1</td>
 <td>0.693</td>
 </tr>
-<tr class="row-even"><td>ENSMUSG00000064358</td>
-<td>784</td>
-<td>protein coding</td>
-<td>0</td>
-<td>2</td>
-<td>1.1</td>
-<td>&nbsp;</td>
-</tr>
 </tbody>
 </table>
+</div>
+<div class="section" id="inferred-aware-links">
+<h2>Inferred aware-links<a class="headerlink" href="#inferred-aware-links" title="Permalink to this headline">¶</a></h2>
+<p>As example, see GM108000&#8217;s links at the <a class="reference external" href="http://epigenomegateway.wustl.edu/browser/?genome=mm9&amp;session=KNZWb8e2Mq&amp;statusId=178461723">WashU genome browser</a>. There, it can be seen that this gene contains only 1 aware-link (from library TwoSteps1219), still, many blind-links spanning known splicing junctions (track *allSJ) support the connection of this gene with its upstream neighbor Gm10801-201. What&#8217;s more, this inferred links seems to be supported by the remaining blind-links.</p>
+</div>
+<div class="section" id="bibliography">
+<h2>Bibliography<a class="headerlink" href="#bibliography" title="Permalink to this headline">¶</a></h2>
+<p id="bibtex-bibliography-exampleCase-0"><table class="docutils citation" frame="void" id="dobin2013" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Alexander Dobin, Carrie&nbsp;A Davis, Felix Schlesinger, Jorg Drenkow, Chris Zaleski, Sonali Jha, Philippe Batut, Mark Chaisson, and Thomas&nbsp;R Gingeras. STAR: ultrafast universal RNA-seq aligner.. <em>Bioinformatics (Oxford, England)</em>, 29(1):15–21, January 2013. <a class="reference external" href="http://bioinformatics.oxfordjournals.org/content/early/2012/10/25/bioinformatics.bts635">URL: http://bioinformatics.oxfordjournals.org/content/early/2012/10/25/bioinformatics.bts635</a>, <a class="reference external" href="http://dx.doi.org/10.1093/bioinformatics/bts635">doi:10.1093/bioinformatics/bts635</a>.</td></tr>
+</tbody>
+</table>
+</p>
 </div>
 </div>
 

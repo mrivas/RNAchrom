@@ -6,9 +6,7 @@ Prerequisites and installation
 
 RNAchrom source code, installation scripts, and source code of this website are available at
 
-	`RNAchrom github page`_
-
-.. _nucChIP github page: https://github.com/mrivas/RNAchrom
+	`RNAchrom github page <https://github.com/mrivas/RNAchrom>`_
 
 Prerequisites
 =============
