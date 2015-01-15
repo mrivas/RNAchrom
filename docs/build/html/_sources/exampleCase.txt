@@ -3,18 +3,18 @@
 Example case
 ============
 
-RNA-chromatin interactome libraries are, in their raw form, paired-end sequencing libraries. Each RNA-chromatin link correspond to a read pair where one mate comes from the RNA aimer and the other from its chromatin target. For brevity, we'll call these as RNA-end and DNA-end, respectively. In the same fashion, we'll call the gene sources of the RNA-ends as aimer genes.
+Here, we'll use RNAchrom tools to analyze RNA-chromatin data. In their raw form, RNA-chromatin libraries are paired-end sequencing libraries. Each read pair correspond to an RNA-chromatin link, where one mate comes from the RNA aimer and the other from its chromatin target. For brevity, we'll call these as RNA-mate and DNA-mate, respectively. In the same fashion, we'll call the gene sources of the RNA-mates as aimer genes.
 
 Data summary
 ------------
 
-We generated two RNA-chromatin interactome libraries on mouse E14: TwoStep1024, and TwoStep1219 (see Table 1). For each library, links were divided into two sets: 
+We generated two RNA-chromatin libraries on mouse E14: TwoStep1024, and TwoStep1219 (see Table 1). For each library, read pairs were divided into two sets: 
 
-* **Aware links**, where at least one end of each link contained the linker sequence. Based on the direction of the linker sequence, each mate could be resolved as RNA-end or DNA-end.
+* **Aware pairs**, where at least one mate contained the linker sequence. Based on the direction of the linker sequence, each mate could be resolved as RNA-end or DNA-end.
 
-* **Blind links**, where linker sequences were absent in both link's ends. Therefore, there was not direct way to map mates into RNA-end and DNA-ends.
+* **Blind pairs**, where linker sequences were absent in both mates. Therefore, there was not direct way to map mates into RNA-end and DNA-ends.
 
-As the RNA-ends were expected to span splice junctions, we used STAR --as splice tolerant aligner :cite:`Dobin2013`-- to map the reads against mm9. For all sets, we allowed up to 2 mismatches, restricted the intron size to less than 10k nt, and removed duplicates (Figure :num:`#alignment-diagram`). For libraries TwoStep1024 and TwoStep1219, this resulted in 16M links, among them where 6k and 4k aware links, respectively (see Table1). 
+As the RNA-mates were expected to span splice junctions, we used STAR --as splice tolerant aligner :cite:`Dobin2013`-- to map the reads against mm9. For all sets, we allowed up to 2 mismatches, restricted the intron size to less than 10k nt (Figure :num:`#alignment-diagram`). For both libraries most blind pairs could be aligned (>75%). Aware pairs, on the other hand, were less mappable (alignment rates ~49%) mainly because after removing the linker sequence we ended up with shorter mates sequences. 
 
 .. _alignment-diagram:
 
@@ -24,6 +24,8 @@ As the RNA-ends were expected to span splice junctions, we used STAR --as splice
    Construction of blind and aware-links. Paired-end fastq files (fastq1,2) were aligned using STAR (Dobin 2013) allowing for up to 2 mismatches. On one hand, reads not containing the linker sequence resulted in aligned (mates’ distance <10k) and chimeric (mates’s distance >600k, or on different chromosomes) alignments, both of them used to build blind-links. On the other hand, reads containing the linker sequence in were splitted into DNA and RNA fragments (determined by the removed linker sequence orientation) and then aligned to build aware-links. 
    
 
+After the alignment, pairs whose both mates were uniquely mapped were considered **RNA-chromatin links**. Aware or bind pairs with one or two mates having multi-hits were discarded.  To avoid PCR-amplification biases, we removed duplicates. This resulted in ~16M links in both libraries, among them were 6k and 4k aware links, respectively (see Table1).
+
 .. csv-table:: Table1: Number of links per library. To compute the % of links overlapping exons, we requiered at least one mate on a pair should overlap an exon.
    :header: "Sample", "# aware pairs (% uniquely aligned)", "# blind pairs (% uniquely aligned)", "# aware links (% overlapping exons)", "blind links (% overlapping exons)"
 
@@ -32,10 +34,10 @@ As the RNA-ends were expected to span splice junctions, we used STAR --as splice
 
 **Inter-chromosomal links** were found only among-blind links: 509 and 368 for libraries TwoSteps1024 an TwoSteps1219, respectively.
 
-Interesting cases: RNA over DNA enriched genes
-----------------------------------------------
+Interesting cases: RNA-end over DNA-end enriched genes
+------------------------------------------------------
 
-We use aware-links to determine the genes interacting with distal genomic regions. For the genomic region of each gene, interesting cases were judged based on their RNA over DNA-ends ratio. The basic idea is that compared to DNA-end, RNA-ends should be more concentrated on aimer genes as these contain both:
+We used aware-links to determine the genes interacting with distal genomic regions. For the genomic region of each gene, interesting cases were judged based on their RNA-ends over DNA-ends ratio. The basic idea is that compared to DNA-ends, RNA-ends should be more concentrated on aimer genes as these contain both:
 
 #. links reaching other genes (targets of the current gene) and,
 #. links of self-ligation (DNA of the current gene binding its owns nascent mRNA).
@@ -58,7 +60,7 @@ Exceptions to this would be genes that are themselves targets of other aimers. T
 
 This resulted in 2 candidates genes that are shared among replicates (see Table 2).
 
-.. csv-table:: Table 2: Candidate genes shared among replicates.
+.. csv-table:: Table 2: Candidate genes shared among replicates. DNA and RNA-mates correspond to the number of supporting mates on the genomic region of the respective gene (including introns).
    :header: "Gene ensemble ID","gene name", "Length (nt)", "Biotype", "# DNA mates", "# RNA mates", "Enrichment"
    
    ENSMUSG00000078942,Naip6, "36,554", protein coding, 0, 1, 0.693
@@ -67,9 +69,11 @@ This resulted in 2 candidates genes that are shared among replicates (see Table 
 Inferred aware-links
 --------------------
 
-As example, see GM108000's links at the `WashU genome browser <http://epigenomegateway.wustl.edu/browser/?genome=mm9&session=KNZWb8e2Mq&statusId=178461723>`_. There, it can be seen that this gene contains only 1 aware-link (from library TwoSteps1219), still, many blind-links spanning known splicing junctions (track \*allSJ) support the connection of this gene with its upstream neighbor Gm10801-201. What's more, this inferred links seems to be supported by the remaining blind-links. 
+Since the aware-links are a small fraction of the blind-links, and the previous enriched cases are statistically insignificant (low number of supporting links), we resorted to an inference method of aware-links. Among blind-links, we looked for mates spanning known splicing junctions. When one end of a pair meets this criteria it was inferred that it corresponds to the RNA-end. By asscociation, the other mate was considered as the DNA-mate. As example, see GM108000's links at the `WashU genome browser <http://epigenomegateway.wustl.edu/browser/?genome=mm9&session=KNZWb8e2Mq&statusId=178461723>`_. There, it can be seen that this gene contains only 1 aware-link (from library TwoSteps1219), still, many blind-links spanning known splicing junctions (track \*allSJ) support the connection of this gene with its upstream neighbor Gm10801-201. What's more, this inferred links seems to be supported by the remaining blind-links. 
 
-.. Based on the splice alignment of each read we can inferr whether is comming from a RNA region or not. In this case, if a read match a known splice junction we call this end as RNA.  
+.. To do
+   Redo enrichment analysis without removal of duplicates (this were already removed at the sequence level, thus no need to do it at the alignment level).
+   Inferred aware-links and use them to call enriched genes.
 
 
 Bibliography
