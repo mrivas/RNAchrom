@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+import argparse, pysam, sys
+#import RNAchrom
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description='Split BAM files into RNA and DNA mates')
+	parser.add_argument('-b',type=str,dest="bFiles",help="STR. Comma separated list of BAM files. A single aligment file contains all paired-end mates.")
+	parser.add_argument('-m',type=str,dest="mateTypes",help="STR. Comma separated list of mate types. It can be any combination of 'proper', 'cis', 'trans', and 'inter'. Default = 'cis,trans,inter'",default="cis,trans,inter")
+	parser.add_argument('-l',type=int,dest="fLength",help="INT. Threshold to distinguish cis and trans acting mates. Default = \"1000\"",default=1000)
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Prefix name for output BAM files. Default = \"output\"",default="output")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+
+###########################################################
+def main():
+	args = getParser().parse_args()
+	bFiles = args.bFiles.split(",")
+	mateTypes = args.mateTypes.split(",")
+	mateTypes = dict( zip(mateTypes,mateTypes) )
+	fLength = args.fLength
+	oFile = args.oFile
+	# Excecution #####################################################
+	print "Saving results to: "+oFile
+	bam=pysam.Samfile(bFiles[0],'rb')
+	outRNA = pysam.Samfile(oFile+"_rna.bam",'wb',template=bam)
+	outDNA = pysam.Samfile(oFile+"_dna.bam",'wb',template=bam)
+	bam.close()
+	for bFile in bFiles:
+		bam=pysam.Samfile(bFile,'rb')
+		for n,almnt in enumerate(bam):
+			if n%1000000 == 0: print str(n)+" read processed"
+			# Quality check
+			if almnt.is_unmapped or dict(almnt.tags)["NH"]>1 or almnt.mate_is_unmapped: 
+				continue
+			# Proper pair
+			if not("proper" in mateTypes) and almnt.is_proper_pair: continue
+			# Cis
+			if not("cis" in mateTypes) and almnt.rname==almnt.rnext \
+			and abs(almnt.isize)<=fLength: continue
+			# Trans
+			if not("trans" in mateTypes) and almnt.rname==almnt.rnext \
+			and abs(almnt.isize)>fLength: continue
+			# Interchromosomal
+			if not("inter" in mateTypes) and almnt.rname!=almnt.rnext \
+			and abs(almnt.isize)==0: continue
+					
+			# If proper pairs are to be included they need to pass and extra checking, namely:
+			# DNA but RNA end should start with CC (or GG if reversed mapped)
+			if almnt.is_proper_pair:
+				if not(almnt.qname in proper_pairs):
+					proper_pairs[almnt.qname] = [almnt]
+				else:
+					proper_pairs[almnt.qname].append(almnt)
+					for almnt_i in proper_pairs[almnt.qname]:
+						if   almnt_i.is_read1: rna=almnt_i
+						elif almnt_i.is_read2: dna=almnt_i
+					# Check that DNA but not RNA start with CC at the 5' end of the read (or GG if reversed aligned)
+					if (    ( not(rna.is_reverse) and (rna.seq[0:2]!="CC"  or rna.seq[0:2]!="CN"  or rna.seq[0:2]!="NC"  or rna.seq[0:2]!="NN" ) ) \
+						 or (     rna.is_reverse  and (rna.seq[-2::]!="GG" or rna.seq[-2::]!="GN" or rna.seq[-2::]!="NG" or rna.seq[-2::]!="NN") ) )\
+					   and ( (not(dna.is_reverse) and dna.seq[0:2]=="CC") or (dna.is_reverse and dna.seq[-2::]=="GG") ):
+						# Add RNA and DNA reads to the respective files
+						if almnt.is_read1:
+							outRNA.write(rna)
+						elif almnt.is_read2:
+							outDNA.write(dna)
+					# Clear entry to save memory
+					del proper_pairs[almnt.qname]
+			# Any other type of read pair has already been thoroughly checked
+			else:
+				if almnt.is_read1:
+					outRNA.write(almnt)
+				elif almnt.is_read2:
+					outDNA.write(almnt)
+		bam.close()
+	
+	outRNA.close()
+	outDNA.close()
+####################################################
+if __name__ == '__main__':
+	main()

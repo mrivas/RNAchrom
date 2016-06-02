@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+import pysam, argparse, sys, numpy, HTSeq, scipy
+#import RNAchrom
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description="Update the flags of single end reads merge into a single BAM file by 'samtools merge | samtools fixmate'")
+	parser.add_argument('-b',type=str,dest="bamFiles",help="STR. Comma separated list of BAM files.")
+	parser.add_argument('-r',type=str,dest="rnaFile",help="BED like file. List of RNA hotspots.")
+	parser.add_argument('-d',type=str,dest="dnaFile",help="BED like file. List of DNA hotspots.")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output\"",default="output")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+
+####################################################
+def passFilter(read):
+	# Distal and interchromosomal reads pass the filter
+	if  read.isize>1000 or read.isize==0:
+		return True
+	else:
+		return False
+####################################################
+def getRegions(File):
+	regions=[]
+	for line in open(File,'r'):
+		if line[0]=="#": continue # skips header
+		chrom,start,end,region_id=line.strip().split("\t")[0:4]
+		region_iv=HTSeq.GenomicInterval(chrom,int(start),int(end))
+		regions.append(region_iv)
+	return regions
+
+####################################################
+def main():
+	args = getParser().parse_args()
+	rnaFile = args.rnaFile
+	dnaFile = args.dnaFile
+	bamFiles = args.bamFiles
+	oFile = args.oFile
+	# Get count matrix (rows are RNA regions, columns DNA regions)
+	nRows,nCols= 0,0
+	for line in open(rnaFile,'r'): nRows+=1
+	for line in open(dnaFile,'r'): nCols+=1
+	countMatrix=numpy.zeros((nRows,nCols))
+	# Get RNA and DNA regions
+	rna_regions=getRegions(rnaFile)
+	dna_regions=getRegions(dnaFile)
+	# Open bam file with reads
+	for bamFile in bamFiles.split(","):
+		reads=pysam.Samfile( bamFile, 'rb' )
+		# Iteration over RNA
+		for i,rna_region in enumerate(rna_regions):
+			# Collect id of reads on RNA region
+			read_ids={}
+			for read in reads.fetch(rna_region.chrom,rna_region.start,rna_region.end):
+				if not passFilter(read): continue
+				read_ids[ read.qname ] = 1
+			# Count the number of links on all DNA regions	
+			for j,dna_region in enumerate(dna_regions):
+				for read in reads.fetch(dna_region.chrom,dna_region.start,dna_region.end):
+					# Add to count matrix
+					if read.qname in read_ids:
+						countMatrix[i,j]+=1		
+		reads.close()
+	out.close()
+####################################################
+if __name__ == '__main__':
+	main()

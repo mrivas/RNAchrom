@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+import HTSeq, argparse, sys
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description='Given an annotation file it outputs the introns.')
+	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output GTF file. Default = \"output.gtf \"",default="output.gtf")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+
+###########################################################
+def main():
+	args = getParser().parse_args()
+	gFile = args.gFile
+	oFile = args.oFile
+	# Excecution #####################################################
+	print "Saving results to: "+oFile
+	out = open(oFile,'w')
+	
+	gtf_reader = HTSeq.GFF_Reader( gFile )
+	gene_id=None
+	
+	for feature in gtf_reader:
+		if feature.type != "exon": continue
+		if feature.attr["gene_id"] != gene_id:
+			# Print introns of previous gene
+			if gene_id != None:
+				# Get introns of current gene
+				introns=[]
+				for iv,val in exons.steps():
+					if val==0: introns.append(iv)
+				introns=introns[1:-1]
+				if len(introns)>0:
+					for intron in introns:
+						output =  [intron.chrom,source,"intron"]
+						output += [intron.start,intron.end,".",strand,".",attr]
+						print>>out, "\t".join(map(str,output))
+			# Get first exon of current gene
+			gene_id      = feature.attr["gene_id"]
+			gene_name    = feature.attr["gene_name"]
+			gene_biotype = feature.attr["gene_biotype"]
+			attr = ["gene_id "+gene_id,"gene_name "+gene_name,"gene_biotype "+gene_biotype]
+			attr = ";".join(map(str, attr ))
+			source = feature.source
+			strand = feature.iv.strand
+			exons  = HTSeq.GenomicArray( "auto", stranded=False, typecode="i" )
+			exons[ feature.iv ] = 1
+		else:
+			# Add subsequent exons of current gene
+			exons[ feature.iv ] = 1
+	
+	out.close()
+####################################################
+if __name__ == '__main__':
+	main()

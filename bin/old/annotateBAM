@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+import HTSeq, argparse, sys
+#import RNAchrom
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description='Annotate both mates of paired-end alignments')
+	parser.add_argument('-b',type=str,dest="bFile",help="BAM file. A single aligment file contains all paired-end mates.")
+	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output\"",default="output")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+
+###########################################################
+def getPairs(almnts):
+	first,second = None, None
+	for almnt in almnts:
+		if   almnt.iv.strand == "+" and almnt.cigar[0].type == "M":
+			if almnt.pe_which == "first":
+				first  = almnt
+			elif almnt.pe_which == "second":
+				second = almnt
+		elif almnt.iv.strand == "-" and almnt.cigar[-1].type == "M":
+			if almnt.pe_which == "first":
+				first  = almnt
+			elif almnt.pe_which == "second":
+				second = almnt
+#	if first==None or second==None:
+#		print "No mates for "+almnt.read.name
+	return [first,second]
+
+def getExons(gtf_file):
+	gtf_reader = HTSeq.GFF_Reader( gtf_file )
+	exons = HTSeq.GenomicArrayOfSets( "auto", stranded=False )
+	for feature in gtf_reader:
+		#if feature.type == "exon":
+		if feature.type == "exon" or feature.type=="intron":
+			exons[ feature.iv ] += feature.attr["gene_id"]+"_"+feature.type+"_"+feature.source+"/"+feature.iv.strand
+	return exons
+
+def annotate(first,second,exons):
+	reads=[first,second]
+	annotations=[]
+	for read in reads:
+		if  read.iv.strand =="+": read_iv=read.cigar[ 0].ref_iv
+		else                    : read_iv=read.cigar[-1].ref_iv
+		gene_ids=set()
+		for iv, val in exons[ read_iv ].steps():
+			gene_ids |= val
+		if len(gene_ids)==0:
+			annotation="."
+		else:
+			sense=[]
+			for gene_id in gene_ids:
+				if read_iv.strand == gene_id.split("/")[1]:
+					sense.append(gene_id+":sense")
+				else:
+					sense.append(gene_id+":antisense")
+			annotation="|".join(map(str,sense))
+		annotations.append(annotation)
+	return annotations # [afirst, asecond]
+
+def printResults(oFile,first,second,afirst,asecond):
+	output=[]
+	reads=[first,second]
+	annotations=[afirst,asecond]
+	for i,read in enumerate(reads):
+		# Interval
+		chrom = read.cigar[0].ref_iv.chrom
+		start = str(read.cigar[0].ref_iv.start)
+		end   = str(read.cigar[0].ref_iv.end)
+		strand= read.cigar[0].ref_iv.strand
+		output += [chrom+":"+start+"-"+end+"/"+strand]
+		# Exon annotation
+		output += [ annotations[i] ]
+		# Splice junction
+		if read.iv.strand=="+":
+			output += [ str(read.optional_field("jM")[0]) ]
+		else:
+			output += [ str(read.optional_field("jM")[-1]) ]
+	# Inferred insert size
+	output += [first.inferred_insert_size]
+	# Read name
+	output += [read.read.name]
+	print >>oFile, "\t".join(map(str,output))
+	return 0
+###########################################################
+def main():
+	args = getParser().parse_args()
+	bFile = args.bFile
+	gFile = args.gFile
+	oFile = args.oFile
+	# Excecution #####################################################
+	print "Exons"
+	exons = getExons(gFile)
+	print "Saving results to: "+oFile
+	out = open(oFile,'w')
+	bam=HTSeq.BAM_Reader( bFile )
+	#bam=HTSeq.BAM_Reader( "RDI-Bharat_S1Aligned.sortedByName.out.bam")
+	read_name=None
+	for n,almnt in enumerate(bam):
+		if n%500000 == 0: print str(n)+" read processed"
+		if not(almnt.aligned) or almnt.optional_field("NH")>1: continue
+		if almnt.read.name != read_name:
+			#Print previous reads
+			if read_name != None:
+				# Select first and second reads
+				first,second=getPairs(reads)
+				if first==None or second==None: 
+					read_name = almnt.read.name
+					reads = []
+					reads.append(almnt)
+					continue
+				# Annotate reads
+				afirst,asecond=annotate(first,second,exons)
+				# Print results
+				printResults(out,first,second,afirst,asecond)
+			#Store new name and read
+			read_name = almnt.read.name
+			reads = []
+			reads.append(almnt)
+		else:
+			#Store new reads
+			reads.append(almnt)
+	
+	out.close()
+####################################################
+if __name__ == '__main__':
+	main()

@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+import argparse, sys, pysam, HTSeq
+import RNAchrom
+
+###########################################################
+# Get command line arguments
+def getParser():
+	parser = argparse.ArgumentParser(description='Counts the number of RNA and DNA reads following in proximal_inproper, proximal_proper, distal, and inter (chromosomal) categories.')
+	parser.add_argument('-a',type=str,dest="aFile",help="STR. Comma separated list of BAM files. On each file the left and right ends correspond to RNA and DNA, respectively")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def main():
+	args = getParser().parse_args()
+	aFiles = args.aFile.split(",")
+	oFile = args.oFile
+
+	print "Counting reads everywhere"
+	count={"proximal_inproper":0,"distal":0,"inter":0,"proximal_proper":0}
+	proper_pairs={} # Stores pairs of type proper pair
+	for aFile in aFiles:
+		bamFile=pysam.Samfile(aFile,'rb')
+		# Get read-pairs (rnadna) or singletons (rna,dna) per gene
+		reads_id = {}
+		for n,read in enumerate(bamFile.fetch()): 
+			if n%1000000==0: print str(n)+" reads processed"
+			# Properly paired reads
+			if read.is_proper_pair:
+				if not(read.qname in proper_pairs):
+					proper_pairs[read.qname] = [read]
+				else:
+					proper_pairs[read.qname].append(read)
+					for read_i in proper_pairs[read.qname]:
+						if   read_i.is_read1: rna=read_i
+						elif read_i.is_read2: dna=read_i
+					# Check that DNA but not RNA start with CC at the 5' end of the read (or GG if reversed aligned)
+					if (    ( not(rna.is_reverse) and (rna.seq[0:2]!="CC"  or rna.seq[0:2]!="CN"  or rna.seq[0:2]!="NC"  or rna.seq[0:2]!="NN" ) ) \
+						 or (     rna.is_reverse  and (rna.seq[-2::]!="GG" or rna.seq[-2::]!="GN" or rna.seq[-2::]!="NG" or rna.seq[-2::]!="NN") ) )\
+					   and ( (not(dna.is_reverse) and dna.seq[0:2]=="CC") or (dna.is_reverse and dna.seq[-2::]=="GG") ):
+						# Counting
+						for read_i in proper_pairs[read.qname]:
+							if read_i.is_read1:
+								count["proximal_proper"] += 1
+					# Clear entry to save memory
+					del proper_pairs[read.qname]
+			# Trans reads: larger than 1k 
+			elif abs(read.isize)>1000: 
+				if read.is_read1:
+					count["distal"] += 1
+			# Interchromosomal reads (inferred_insert_size=0)
+			elif read.isize==0: 
+				if read.is_read1:
+					count["inter"] += 1
+			# Cis reads, keeping only distal reads
+			elif abs(read.isize)<=1000 and read.isize!=0: 
+				if read.is_read1:
+					count["proximal_inproper"] += 1
+	print "Saving results"
+	out = open(oFile,'w')
+	# Print header line
+	output = ["#read_type","count"]
+	print>>out, "\t".join(map(str,output))
+	# Print counts
+	for read_type in ["proximal_inproper","proximal_proper","distal","inter"]:
+		output = [read_type, count[read_type] ]
+		print>>out, "\t".join(map(str,output))
+				
+	out.close()
+##########################################################
+if __name__ == '__main__':
+	main()

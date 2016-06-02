@@ -1,0 +1,153 @@
+#!/usr/bin/env python
+import argparse, sys, pysam, HTSeq
+import RNAchrom
+
+###########################################################
+# Get command line arguments
+def getParser():
+	parser = argparse.ArgumentParser(description='Counts the number of RNA and DNA reads per gene (including introns).')
+	parser.add_argument('-a',type=str,dest="aFile",help="STR. Comma separated list of BAM files. On each file the left and right ends correspond to RNA and DNA, respectively")
+	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def getGenes(gtfFile):
+	# Get genomic region per gene_id
+	regions = {}
+	gtf_file = HTSeq.GFF_Reader( gtfFile )
+	for feature in gtf_file:
+		gene_id = feature.attr["gene_id"]+"|"+feature.attr["gene_name"]+"|"+feature.attr["gene_biotype"]
+		if gene_id in regions:
+			if feature.iv.start < regions[gene_id].start:
+				regions[gene_id].start = feature.iv.start
+			if feature.iv.end > regions[gene_id].end:
+				regions[gene_id].end = feature.iv.end
+		else:
+			regions[gene_id] = HTSeq.GenomicInterval(feature.iv.chrom,feature.iv.start,feature.iv.end,feature.iv.strand) 
+	return regions
+#########################################################
+def main():
+	args = getParser().parse_args()
+	aFiles = args.aFile.split(",")
+	gtfFile = args.gFile
+	oFile = args.oFile
+
+	print "Getting genes"
+	if exons_only:
+		regions = 
+	else:
+		regions = getGenes(gtfFile)
+	print "Counting reads per gene"
+	countRNAps,countDNAps = {},{}
+	countRNAcs,countDNAcs = {},{}
+	countRNAts,countDNAts = {},{}
+	countRNAis,countDNAis = {},{}
+	proper_pairs={} # Stores pairs of type proper pair
+	for aFile in aFiles:
+		bamFile=pysam.Samfile(aFile,'rb')
+		for n,gene_id in enumerate(regions):
+			if n%1000==0: print str(n)+" genes processed"
+			gene_iv = regions[gene_id]
+#######################			
+		for n,key in enumerate(regions):
+			if n%1000==0: print str(n)+" genes processed"
+			if exons_only:
+				gene_iv = key
+				gene_id = regions[gene_iv].steps()[0][1]
+			else:
+				gene_id = key
+				gene_iv = regions[gene_id]
+
+			gene_iv, gene_id =  
+#######################			
+			# Get read-pairs (rnadna) or singletons (rna,dna) per gene
+			reads_id = {}
+			reads_iter = bamFile.fetch(gene_iv.chrom,gene_iv.start,gene_iv.end) 
+			for read in reads_iter:
+				# Properly paired reads
+				if read.is_proper_pair:
+					if not(read.qname in proper_pairs):
+						proper_pairs[read.qname] = [read]
+					else:
+						proper_pairs[read.qname].append(read)
+						for read_i in proper_pairs[read.qname]:
+							if   read_i.is_read1: rna=read_i
+							elif read_i.is_read2: dna=read_i
+						# Check that DNA but not RNA start with CC at the 5' end of the read (or GG if reversed aligned)
+						if (    ( not(rna.is_reverse) and (rna.seq[0:2]!="CC"  or rna.seq[0:2]!="CN"  or rna.seq[0:2]!="NC"  or rna.seq[0:2]!="NN" ) ) \
+							 or (     rna.is_reverse  and (rna.seq[-2::]!="GG" or rna.seq[-2::]!="GN" or rna.seq[-2::]!="NG" or rna.seq[-2::]!="NN") ) )\
+						   and ( (not(dna.is_reverse) and dna.seq[0:2]=="CC") or (dna.is_reverse and dna.seq[-2::]=="GG") ):
+							# Counting
+							for read_i in proper_pairs[read.qname]:
+								if read_i.is_read1:
+									if gene_id in countRNAps: countRNAps[gene_id] += 1
+									else:                     countRNAps[gene_id] = 1
+								elif read_i.is_read2:
+									if gene_id in countDNAps: countDNAps[gene_id] += 1
+									else:                     countDNAps[gene_id] = 1
+						# Clear entry to save memory
+						del proper_pairs[read.qname]
+				# Trans reads: larger than 1k 
+				elif abs(read.isize)>1000: 
+					if read.is_read1:
+						if gene_id in countRNAts: countRNAts[gene_id] += 1
+						else:                     countRNAts[gene_id] = 1
+					elif read.is_read2:
+						if gene_id in countDNAts: countDNAts[gene_id] += 1
+						else:                     countDNAts[gene_id] = 1
+				# Trans reads: interchromosomal (inferred_insert_size=0)
+				elif read.isize==0: 
+					if read.is_read1:
+						if gene_id in countRNAis: countRNAis[gene_id] += 1
+						else:                     countRNAis[gene_id] = 1
+					elif read.is_read2:
+						if gene_id in countDNAis: countDNAis[gene_id] += 1
+						else:                     countDNAis[gene_id] = 1
+				# Cis reads, keeping only trans reads
+				elif abs(read.isize)<=1000 and read.isize!=0: 
+					if read.is_read1:
+						if gene_id in countRNAcs: countRNAcs[gene_id] += 1
+						else:                     countRNAcs[gene_id] = 1
+					elif read.is_read2:
+						if gene_id in countDNAcs: countDNAcs[gene_id] += 1
+						else:                     countDNAcs[gene_id] = 1
+	print "Saving results"
+	out = open(oFile,'w')
+	# Print header line
+	output = ["chrom","start","end","gene_id","score","strand"]
+	output += ["RNA_cis_count","DNA_cis_count"]
+	output += ["RNA_trans_count","DNA_trans_count"]
+	output += ["RNA_intChrom_count","DNA_intChrom_count"]
+	output += ["RNA_proper_count","DNA_proper_count"]
+	print>>out, "\t".join(map(str,output))
+	# Print counts
+	for gene_id in regions:
+		gene_iv=regions[gene_id]
+		countRNAp,countDNAp,countRNAc,countDNAc,countRNAt,countDNAt,countRNAi,countDNAi = 0,0,0,0,0,0,0,0
+		# Count of proper reads
+		if gene_id in countRNAps: countRNAp=countRNAps[gene_id]
+		if gene_id in countDNAps: countDNAp=countDNAps[gene_id]
+		# Count of cis reads
+		if gene_id in countRNAcs: countRNAc=countRNAcs[gene_id]
+		if gene_id in countDNAcs: countDNAc=countDNAcs[gene_id]
+		# Count of trans reads
+		if gene_id in countRNAts: countRNAt=countRNAts[gene_id]
+		if gene_id in countDNAts: countDNAt=countDNAts[gene_id]
+		# Count of interchromosomal reads
+		if gene_id in countRNAis: countRNAi=countRNAis[gene_id]
+		if gene_id in countDNAis: countDNAi=countDNAis[gene_id]
+		output = [gene_iv.chrom,gene_iv.start,gene_iv.end,gene_id,".",gene_iv.strand ]
+		output += [ countRNAc, countDNAc ]
+		output += [ countRNAt, countDNAt ]
+		output += [ countRNAi, countDNAi ]
+		output += [ countRNAp, countDNAp ]
+		print>>out, "\t".join(map(str,output))
+				
+	out.close()
+##########################################################
+if __name__ == '__main__':
+	main()

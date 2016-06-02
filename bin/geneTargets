@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+import argparse, sys
+
+###########################################################
+# Get command line arguments
+def getParser():
+	parser = argparse.ArgumentParser(description='Output the DNA ends along with pvalues. It excludes RNA-DNA links where the RNA overlap more than 1 gene.')
+	parser.add_argument('-a',type=str,dest="aFile",help="Annotation file. Output of annotateBAM")
+	parser.add_argument('-p',type=str,dest="pFile",help="Pvalues file. Output of analysis_count_exons.R, where column 16 contain the pvalues.")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def main():
+	args = getParser().parse_args()
+	annotFile = args.aFile
+	pvalueFile = args.pFile
+	outFile = args.oFile
+
+	print "Reading pvalues"
+	pvalues={}
+	for n, line in enumerate(open(pvalueFile,"r")):
+		if n==0: continue # skip header line
+		line=line.strip().split("\t")
+		gene_id=line[3]
+		pvalue=float(line[15])
+		pvalues[gene_id]=pvalue
+
+	print "Printing target DNAs along with their Pvalues"
+	out=open(outFile,"w")
+	for line in open(annotFile,"r"):
+		line=line.strip().split("\t")
+		chrom,start,end=line[4:7]
+		gene_id=line[8]
+		if gene_id==".": continue
+		if gene_id in pvalues: # excludes links where the RNA overlap more than one gene
+			pvalue=pvalues[gene_id]
+			output = [chrom,start,end,gene_id,pvalue]
+			print >>out, "\t".join(map(str,output))
+	out.close()
+##########################################################
+if __name__ == '__main__':
+	main()

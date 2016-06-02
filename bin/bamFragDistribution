@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+import argparse, sys, numpy, pysam
+from matplotlib import pyplot
+
+###########################################################
+def getParser():
+	parser = argparse.ArgumentParser(description='Generate histogram of fragment lengthss.')
+	parser.add_argument('-b'   , type=str,   dest="bamNames",help="STR. Comma separated list of sorted paired-end BAM files.")
+	parser.add_argument('-t'   , type=str,   dest="title",help="STR. Title of histogram. Default: 'none'.",default="none")
+	parser.add_argument('-p'   , type=str,   dest="proper",help="STR. 'true' or 'false' to consider or not proper pairs. Default: 'true'.",default="true")
+	parser.add_argument('-i'   , type=str,   dest="inter",help="STR. 'true' or 'false' to consider or not interchromosomal pairs. Default: 'true'.",default="true")
+	parser.add_argument('-bins'   , type=int,   dest="bins",help="INT. Number of bins for the histogram. Default: 100.",default=100)
+
+	parser.add_argument('-o'   , type=str,   dest="prefix",help="Prefix of output figure. Default: 'output'.", default="output")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+########################################################################################
+def getFragDistribution(bamNames,inter,proper):
+	
+	for bamName in bamNames:
+		bamFile = pysam.Samfile( bamName, 'rb')
+
+		lengths = []
+		for almnt in bamFile:
+			if almnt.is_unmapped or not( almnt.is_read1) or almnt.mate_is_unmapped: continue
+			# Keep proper pairs
+			if proper=="false" and almnt.is_proper_pair: continue
+			# Keep interchromosomal pairs
+			if inter=="false" and almnt.isize==0: continue
+			if abs(almnt.isize)>0:
+				lengths.append(	numpy.log10(abs(almnt.isize)) )
+			elif abs(almnt.isize)==0:
+				if almnt.rnext != almnt.rname: # interchromosomal fragment
+					lengths.append( 0 )
+				else:
+					isize=numpy.max([ abs(almnt.alen),abs(almnt.pos-almnt.pnext)])
+					lengths.append(	numpy.log10(isize) )
+		bamFile.close()
+	
+	return lengths
+###########################################################
+def main():
+	args	= getParser().parse_args()
+	bamNames = args.bamNames.split(",")
+	proper  = args.proper
+	inter   = args.inter
+	title   = args.title
+	bins    = args.bins
+	prefix	= args.prefix
+
+	lengths = getFragDistribution(bamNames,inter,proper)
+	pyplot.hist(lengths,normed=False,bins=bins,alpha=0.5,histtype='stepfilled')
+	pyplot.axvline(x=numpy.log10(1000),alpha=1,color="red")
+	#pyplot.vlines(x=147,ymin=0,ymax=0.1,colors="red")
+	fs=17
+	if title!="none": pyplot.title(title,fontsize=fs)
+	pyplot.xlabel("Log10( Fragment size [bp] )",fontsize=fs)
+	pyplot.ylabel("Fraction",fontsize=fs)
+	pyplot.savefig(prefix+".svg")
+	pyplot.tick_params(axis='both', which='both', labelsize=15)
+	pyplot.close()
+
+################################################################
+if __name__ == '__main__':
+	main()

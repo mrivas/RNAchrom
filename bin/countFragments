@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+import argparse, sys, HTSeq
+import RNAchrom
+
+###########################################################
+# Get command line arguments
+def getParser():
+	parser = argparse.ArgumentParser(description='Counts the number of RNA and DNA mates per gene (including introns).')
+	parser.add_argument('-a',type=str,dest="aFile",help="BAM file. The left and right ends correspond to RNA and DNA, respectively")
+	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def getGenes(gtfFile):
+	# Get genomic region per gene_id
+	regions = {}
+	gtf_file = HTSeq.GFF_Reader( gtfFile )
+	for feature in gtf_file:
+		gene_id = feature.attr["gene_id"]
+		if gene_id in regions:
+			if feature.iv.start < regions[gene_id].start:
+				regions[gene_id].start = feature.iv.start
+			if feature.iv.end > regions[gene_id].end:
+				regions[gene_id].end = feature.iv.end
+		else:
+			regions[gene_id] = HTSeq.GenomicInterval(feature.iv.chrom,feature.iv.start,feature.iv.end,feature.iv.strand) 
+#	# Get gene_id per genomic region
+#	genes = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+#	for gene_id in regions:
+#		iv = regions[gene_id]
+#		genes[ iv ] += gene_id+":"+iv.strand
+	return regions
+#########################################################
+def main():
+	args = getParser().parse_args()
+	aFile = args.aFile
+	gtfFile = args.gFile
+	oFile = args.oFile
+
+	print "Getting genes"
+	regions = getGenes(gtfFile)
+	print "Counting reads per gene"
+	reads=HTSeq.BAM_Reader(aFile)
+	counts = {}
+	for gene_id in regions:
+		gene_iv = regions[gene_id]
+		# Get read-pairs (rnadna) or singletons (rna,dna) per gene
+		reads_id = {}
+		for read in reads[gene_iv]:
+			if not(read.read.name in reads_id): reads_id[read.read.name]=["",""]
+			if read.pe_which=="first" and read.iv.strand!=gene_iv.strand: # RNA (different stands as we are sequencing cDNA from RNA)
+				reads_id[read.read.name][0]="rna"
+			elif read.pe_which=="first" and read.iv.strand==gene_iv.strand: # antisense RNA
+				reads_id[read.read.name][0]="Arna"
+			elif read.pe_which=="second" and read.iv.strand!=gene_iv.strand: # DNA
+				reads_id[read.read.name][1]="dna"
+			elif read.pe_which=="second" and read.iv.strand==gene_iv.strand: # antisense DNA
+				reads_id[read.read.name][1]="Adna"
+		# Count read-pairs (rnadna,Arnadna,rnaAdna,ArnaAdna) or singletons (Arna,Adna,,rna,dna) per gene
+		if not( gene_id in counts):
+			counts[gene_id] = {} 
+			counts[gene_id]["rna"]    ,counts[gene_id]["dna"]     =0,0
+			counts[gene_id]["Arna"]   ,counts[gene_id]["Adna"]    =0,0
+			counts[gene_id]["rnadna"] ,counts[gene_id]["Arnadna"] =0,0
+			counts[gene_id]["rnaAdna"],counts[gene_id]["ArnaAdna"]=0,0
+		for key in reads_id:
+			value = "".join( map(str,reads_id[key]) ) # rna/dna/rnadna
+			counts[gene_id][value] += 1
+	print "Saving results"
+	out = open(oFile,'w')
+	# Print header line
+	output = ["chrom","start","end","gene_id","score","strand"]
+	output += ["rna","Arna","dna","Adna"]
+	output += ["rna-dna","Arna-dna","rna-Adna","Arna-Adna"]
+	print>>out, "\t".join(map(str,output))
+	# Print counts
+	for gene_id in counts:
+		#gene_id,gene_strand=gene_id_strand.split(":")
+		gene_iv=regions[gene_id]
+		output = [gene_iv.chrom,gene_iv.start,gene_iv.end,gene_id,".",gene_iv.strand]
+		output += [counts[gene_id]["rna"]    ,counts[gene_id]["Arna"]    ]
+		output += [counts[gene_id]["dna"]    ,counts[gene_id]["Adna"]    ]
+		output += [counts[gene_id]["rnadna"] ,counts[gene_id]["Arnadna"] ]
+		output += [counts[gene_id]["rnaAdna"],counts[gene_id]["ArnaAdna"]]
+		print>>out, "\t".join(map(str,output))
+				
+	out.close()
+##########################################################
+if __name__ == '__main__':
+	main()

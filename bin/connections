@@ -1,0 +1,46 @@
+#!/usr/bin/env python
+import argparse, sys, numpy, matplotlib, itertools, scipy
+from collections import defaultdict
+###########################################################
+# Get command line arguments
+def getParser():
+	parser = argparse.ArgumentParser(description='Count the connections between any two regions sharing at least one link.')
+	parser.add_argument('-c',type=str,dest="cFile",help="STR. Name of file containing the connection between two or more regions")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def main():
+	args = getParser().parse_args()
+	linksFile = args.cFile
+	oFile = args.oFile
+
+	# Collect data
+	totalRNA,totalDNA = defaultdict(int), defaultdict(int)
+	connections = defaultdict(int)
+	for line in open(linksFile,"r"):
+		line=line.strip().split("\t")
+		rna=line[8] # RNA hotspot
+		dna=line[9] # DNA hotspot
+		if rna=="." and dna==".": continue
+		totalRNA[rna]+=1
+		totalDNA[dna]+=1
+		if rna!="." and dna!=".":
+			connections[rna+"|"+dna]+=1
+	# Print results
+	output = ["rna_chrom","rna_start","rna_end","dna_chrom","dna_start","dna_end","connections","rna_total","dna_total","ratio"]
+	print >>out, "\t".join( map(str,output) )
+	for key in connections:
+		rna,dna=key.split("|")
+		output  = re.split(':|-',rna) 
+		output += re.split(':|-',dna)
+		output += [ connections[key]             ]
+		output += [ totalRNA[rna], totalDNA[dna] ]
+		output += [ float(connections[key])/max(total_rna[rna],total_dna[dna]) ]
+		print >>out, "\t".join( map(str,output) )
+########################################################
+if __name__ == '__main__':
+    main()

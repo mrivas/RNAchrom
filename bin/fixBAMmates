@@ -1,0 +1,100 @@
+#!/usr/bin/env python
+import pysam, argparse, sys
+#import RNAchrom
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description="Update the flags of single end reads merge into a single BAM file by 'samtools merge | samtools fixmate'")
+	parser.add_argument('-b',type=str,dest="bFile",help="BAM file. A single aligment file contains all paired-end mates.")
+	parser.add_argument('-g',type=str,dest="groups",help="STR. Comma separated list of read groups corresponding to RNA and DNA. For instance: 'R1,R2'")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output\"",default="output")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+
+###########################################################
+def updateFlags(almnts,groups):
+	# Check if which one is first (64) and second (128)
+	if   dict(almnts[0].tags)["RG"]==groups[0]: fi=0;si=1
+	else:                                       fi=1;si=0
+	first=almnts[fi]
+	first.flag += 64 # first in pair
+	first.flag += 1 # Reads are paired
+	second=almnts[si]
+	second.flag += 128 # Second in pair
+	second.flag += 1 # Reads are paired
+	# Mate is in reverse strand (32)
+	if second.is_reverse: first.flag  += 32
+	if  first.is_reverse: second.flag += 32
+	# Check if properly paired (2): opposite strands, mapped to same chrom, isize<=1000
+	if not(first.is_reverse) and second.is_reverse \
+		and first.rname==second.rname        \
+		and (second.pos+second.qend-first.pos)<=1000     \
+		and (second.pos+second.qend-first.pos)>0:
+		first.flag  += 2
+		second.flag += 2
+	elif not(second.is_reverse) and first.is_reverse \
+		and first.rname==second.rname        \
+		and (first.pos+first.qend-second.pos)<=1000 \
+		and (first.pos+first.qend-second.pos)>0:     
+		first.flag  += 2
+		second.flag += 2
+	# Assign RNEXT
+	first.rnext =second.rname
+	second.rnext= first.rname
+	# Assign PNEXT
+	first.pnext =second.pos
+	second.pnext= first.pos
+	# Assign TLEN
+	if first.rname==second.rname: # same chromosome
+		if first.pos <= second.pos:
+			tlen=(second.pos+second.qend)-first.pos
+			first.isize  = tlen
+			second.isize = -tlen
+		else:
+			tlen=(first.pos+first.qend)-second.pos
+			first.isize  = -tlen
+			second.isize =  tlen
+	else: # interchromosomal mates
+			first.isize  = 0
+			second.isize = 0
+	return [first,second]
+
+###########################################################
+def main():
+	args = getParser().parse_args()
+	bFile = args.bFile
+	groups = args.groups.strip().split(",")
+	oFile = args.oFile
+	# Excecution #####################################################
+	print "Saving results to: "+oFile
+	out = open(oFile,'w')
+	bam=pysam.Samfile( bFile, 'rb' )
+	out=pysam.Samfile( oFile,'wb',template=bam)
+	#bam=HTSeq.BAM_Reader( "RDI-Bharat_S1Aligned.sortedByName.out.bam")
+	read_name=None
+	for n,almnt in enumerate(bam):
+		if n%500000 == 0: print str(n)+" read processed"
+		if almnt.is_unmapped or dict(almnt.tags)["NH"]>1: continue
+		if almnt.qname != read_name:
+			#Print previous reads
+			if read_name != None:
+				if len(reads)==2: # filter out singletons
+					# Update flags
+					first,second=updateFlags(reads,groups)
+					# Print results
+					out.write(first)
+					out.write(second)
+			#Store new name and read
+			read_name = almnt.qname
+			reads = [ almnt ]
+		else:
+			#Store new reads
+			reads.append(almnt)
+	bam.close()	
+	out.close()
+####################################################
+if __name__ == '__main__':
+	main()

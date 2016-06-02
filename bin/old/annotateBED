@@ -1,0 +1,95 @@
+#!/usr/bin/env python
+import HTSeq, argparse, sys
+#import RNAchrom
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description='Annotate regions with their overlap on gtf_file.')
+	parser.add_argument('-b',type=str,dest="bFile",help="BED file. Each line corresponding to elements to be annotated.")
+	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output\"",default="output.txt")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+
+###########################################################
+
+def getFeatures(gtf_file):
+	gtf_reader = HTSeq.GFF_Reader( gtf_file )
+	features = HTSeq.GenomicArrayOfSets( "auto", stranded=False )
+	for feature in gtf_reader:
+		#if feature.type == "exon":
+		if feature.type == "exon" or feature.type=="intron":
+			features[ feature.iv ] += feature.attr["gene_id"]+"/"+feature.source+"/"+feature.iv.strand
+			#features[ feature.iv ] += feature.attr["gene_id"]+"_"+feature.type+"_"+feature.source+"/"+feature.iv.strand
+	return features
+
+def annotate(bed_iv,features):
+	features_ids=set()
+#		sense=[]
+	genes=[]
+	genes_sources=[]
+	repeats=[]
+	for iv, val in features[ bed_iv ].steps():
+		features_ids |= val
+	if len(features_ids)>0:
+		for feature_id in features_ids:
+			if bed_iv.strand == feature_id.split("/")[2]:
+				if feature_id.split("/")[1]=="mm9_rmsk": # repeats
+					repeats.append(feature_id.split("/")[0])
+				else:
+					genes.append(feature_id.split("/")[0])
+					genes_sources.append(feature_id.split("/")[1])
+#				sense.append(feature_id+":sense")
+#			else:
+#				sense.append(feature_id+":antisense")
+#		annotation="|".join(map(str,sense))
+	if len(genes)>0:   
+		genes="|".join(map(str,genes))
+		genes_sources="|".join(map(str,genes_sources))
+	else:	
+		genes="."
+		genes_sources="."
+	if len(repeats)>0: repeats="|".join(map(str,repeats))
+	else: repeats="."	
+#	return annotation
+	return [genes,genes_sources,repeats]
+
+###########################################################
+def main():
+	args = getParser().parse_args()
+	bFile = args.bFile
+	gFile = args.gFile
+	oFile = args.oFile
+	# Excecution #####################################################
+	print "Reading features"
+	features = getFeatures(gFile)
+	print "Saving results to: "+oFile
+	out = open(oFile,'w')
+	bed_file=open( bFile, 'r' )
+	for n,line in enumerate(bed_file):
+		if n==0:
+			output=["chrom","start","end","name","reads_posSrand","reads_negStrand","sum","ratios","pValues","gene","gene_biotype","repeat"]
+#			output=["chrom","start","end","name","reads_posSrand","reads_negStrand","sum","ratios","pValues","annotation"]
+			print>>out, "\t".join(map(str,output))
+			continue # skip header
+		if n%500000 == 0: print str(n)+" read processed"
+		chrom,start,end,name,pos,neg,both,ratio,pvalue=line.strip().split("\t")
+		if float(ratio)<0.85 or float(pvalue)>=0.05: continue
+		if int(neg)>int(pos): strand="+" # Reads are comming from cDNA => neg reads came from pos strand
+		else:       strand="-"
+		bed_iv=HTSeq.GenomicInterval(chrom,int(start),int(end),strand)
+		genes,gene_biotype,repeats=annotate(bed_iv,features)
+#		annotation=annotate(bed_iv,features)
+		# Print results
+		output = line.strip().split("\t")
+		output += [genes,gene_biotype,repeats]
+#		output += [annotation]
+		print>>out, "\t".join(map(str,output))
+	out.close()
+	bed_file.close()
+####################################################
+if __name__ == '__main__':
+	main()

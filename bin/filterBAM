@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+import HTSeq, argparse, pysam, sys
+#import RNAchrom
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description='Prints the RNA or DNA end of each read-pairs in BED format')
+	parser.add_argument('-b',type=str,dest="bFiles",help="STR. Comma separated list of BAM files. A single aligment file contains all paired-end mates.")
+	parser.add_argument('-w',type=str,dest="which",help="STR. 'rna' or 'dna' to print only the RNA or DNA end, respectively. Default = 'rna'",default="rna")
+	parser.add_argument('-m',type=str,dest="mateTypes",help="STR. Comma separated list of mate types. It can be any combination of 'proper', 'cis', 'trans', and 'inter'. Default = 'cis,trans,inter'",default="cis,trans,inter")
+	parser.add_argument('-l',type=int,dest="fLength",help="INT. Fragment length threshold to discriminate between cis and trans. Default = \"0\"",default=0)
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Prefix name for output BED and BAM files. Default = \"output\"",default="output")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+
+###########################################################
+def getIV(almnts,chroms):
+	output,read_name = None,None
+	if len(almnts)==1:
+		for almnt in almnts:
+			if  not(almnt.is_reverse) and almnt.cigar[0][0]==0: # forward and type == "M"
+				length=almnt.cigar[0][1] # type M
+				start =almnt.pos
+				end   =almnt.pos+length
+				strand="+"
+				chrom = chroms[almnt.rname]
+				read_name=almnt.qname
+			elif almnt.is_reverse and almnt.cigar[-1][0]==0: # reverse and type == "M"
+				length=almnt.cigar[-1][1] # type M
+				start =almnt.pos+almnt.qend-length
+				end =almnt.pos+almnt.qend
+				strand ="-"
+				chrom = chroms[almnt.rname]
+				read_name=almnt.qname
+	else: 
+		print almnts[0].qname + " was found more than once"
+		print almnts
+		print "================================================"
+	if read_name!=None:
+		output = [chrom,start,end,read_name,".",strand]
+	return output
+
+###########################################################
+def main():
+	args = getParser().parse_args()
+	bFiles = args.bFiles.split(",")
+	which = args.which
+	mateTypes = args.mateTypes.split(",")
+	mateTypes = dict( zip(mateTypes,mateTypes) )
+	fLength = args.fLength
+	oFile = args.oFile
+	# Excecution #####################################################
+	print fLength
+	print "Saving results to: "+oFile
+	out = open(oFile+".bed",'w')
+
+	for bFile in bFiles:
+		bam=pysam.Samfile( bFile, 'rb' )
+		chroms=bam.references # chromosome names
+		read_name=None
+		for n,almnt in enumerate(bam):
+			if n%500000 == 0: print str(n)+" read processed"
+			# RNA or DNA
+			if almnt.is_read1 and which=="dna": continue # Filter out all but DNA
+			if almnt.is_read2 and which=="rna": continue # Filter out all but RNA
+			# Quality control
+			if almnt.is_unmapped or dict(almnt.tags)["NH"]>1 or almnt.mate_is_unmapped: continue
+			# Proper pair
+			if not("proper" in mateTypes) and almnt.is_proper_pair: continue
+			# Cis
+			if not("cis" in mateTypes) and almnt.rname==almnt.rnext \
+			and abs(almnt.isize)<=fLength: continue
+			# Trans
+			if not("trans" in mateTypes) and almnt.rname==almnt.rnext \
+			and abs(almnt.isize)>fLength: continue
+			# Interchromosomal
+			if not("inter" in mateTypes) and almnt.rname!=almnt.rnext \
+			and abs(almnt.isize)==0: continue
+
+			if almnt.qname != read_name:
+				#Print previous reads
+				if read_name != None:
+					# Collect all reads with the same id; this is a check point as it should be only 1
+					read_iv=getIV(reads,chroms)
+					if read_iv==None: 
+						read_name = almnt.qname
+						reads = []
+						reads.append(almnt)
+						continue
+					# Print results
+					#readIds[read_name]=1
+					print >>out, "\t".join(map(str,read_iv))
+				#Store new name and read
+				read_name = almnt.qname
+				reads = []
+				reads.append(almnt)
+			else:
+				#Store new reads
+				reads.append(almnt)
+	out.close()
+#	#####################################################
+#	# Print out filtered BAM
+#	bamFile = pysam.Samfile(bFile,'rb')
+#	outBAM = pysam.Samfile(oFile+".bam",'wb',template=bamFile)
+#	
+#	for almnt in bamFile:
+#		if almnt.qname in readIds:
+#			outBAM.write(almnt)
+#	outBAM.close()
+#	bamFile.close()
+####################################################
+if __name__ == '__main__':
+	main()

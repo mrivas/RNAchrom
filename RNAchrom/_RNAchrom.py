@@ -23,7 +23,7 @@ def geneExonIV(gtfFile):
 			if feature.iv.end > geneID_IV[ID].end:
 				geneID_IV[ID].end = feature.iv.end
 		else:
-			geneID_IV[ID] = feature.iv
+			geneID_IV[ID] = HTSeq.GenomicInterval(feature.iv.chrom,feature.iv.start,feature.iv.end,feature.iv.strand)
 
 		if feature.type=="exon":
 			exon[feature.iv] += "exon"	
@@ -277,7 +277,7 @@ def genes(gtfFile):
 			if feature.iv.end > geneID_IV[ID].end:
 				geneID_IV[ID].end = feature.iv.end
 		else:
-			geneID_IV[ID] = feature.iv
+			geneID_IV[ID] = HTSeq.GenomicInterval(feature.iv.chrom,feature.iv.start,feature.iv.end,feature.iv.strand)
 	
 	
 	# Get ID per genomic region
