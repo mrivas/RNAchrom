@@ -145,7 +145,8 @@ def main():
 				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.pos,read.pos+length)
 			elif   read.is_reverse  and read.cigar[-1][0]==0:
 				length=read.cigar[-1][1]
-				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.qend-length,read.qend)
+				#read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.qend-length,read.qend)
+				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.pos+read.qend-length,read.pos+read.qend)
 			# Get region_ids overlapping the first M region of the current read
 			region_ids = set()
 			for iv, val in regions[read_iv].steps():			

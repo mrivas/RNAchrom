@@ -3,7 +3,7 @@ import pysam, argparse, sys, numpy, HTSeq, scipy
 
 def getParser():
 	# Get command line arguments
-	parser = argparse.ArgumentParser(description="Annotate the RNA-chromatin connections")
+	parser = argparse.ArgumentParser(description="Annotate the aligned both mates of RNA-chromatin connections")
 	parser.add_argument('-b',type=str,dest="bamFiles",help="STR. Comma separated list of BAM files.")
 	parser.add_argument('-r',type=str,dest="rFile",help="GTF or BED file. Regions where reads are counted. If GTF, it must contain biotype information")
 	parser.add_argument('-e',type=str,dest="exonsOnly",help="STR. Valid only if the annotation file is GTF. It takes 'true' if counts are performed on exons only, 'false' if counts are performed over all the gene length (including introns). Default: 'false'",default="false")
@@ -103,7 +103,8 @@ def main():
 				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.pos,read.pos+length,"+")
 			elif   read.is_reverse  and read.cigar[-1][0]==0:
 				length=read.cigar[-1][1]
-				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.qend-length,read.qend,"-")
+#				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.qend-length,read.qend,"-")
+				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.pos+read.qend-length,read.pos+read.qend,"-")
 			# Get region_ids overlapping the first M region of the current read
 			region_ids = set()
 			for iv, val in regions[read_iv].steps():

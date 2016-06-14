@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse, sys, numpy, matplotlib, itertools, scipy
+import argparse, sys, numpy, matplotlib, itertools, scipy, re
 from collections import defaultdict
 ###########################################################
 # Get command line arguments
@@ -20,26 +20,36 @@ def main():
 
 	# Collect data
 	totalRNA,totalDNA = defaultdict(int), defaultdict(int)
-	connections = defaultdict(int)
+	connectionsF,connectionsB = defaultdict(int), defaultdict(int)
+	keys=set()
 	for line in open(linksFile,"r"):
 		line=line.strip().split("\t")
-		rna=line[8] # RNA hotspot
-		dna=line[9] # DNA hotspot
-		if rna=="." and dna==".": continue
-		totalRNA[rna]+=1
-		totalDNA[dna]+=1
-		if rna!="." and dna!=".":
-			connections[rna+"|"+dna]+=1
+		region1=line[8] # RNA hotspot
+		region2=line[9] # DNA hotspot
+		if region1=="." and region2==".": continue
+		totalRNA[region1]+=1
+		totalDNA[region2]+=1
+		if region1!="." and region2!=".":
+			key=sorted([region1,region2])
+			key="|".join( map(str,key) )
+			if region1+"|"+region2==key:
+				connectionsF[key]+=1
+			else:
+				connectionsB[key]+=1
+			keys |= set([key])
 	# Print results
-	output = ["rna_chrom","rna_start","rna_end","dna_chrom","dna_start","dna_end","connections","rna_total","dna_total","ratio"]
+	out=open(oFile,"w")
+	output = ["chrom1","start1","end1","chrom2","start2","end2","forward","backward","out1","in1","out2","in2","ratio"]
 	print >>out, "\t".join( map(str,output) )
-	for key in connections:
-		rna,dna=key.split("|")
-		output  = re.split(':|-',rna) 
-		output += re.split(':|-',dna)
-		output += [ connections[key]             ]
-		output += [ totalRNA[rna], totalDNA[dna] ]
-		output += [ float(connections[key])/max(total_rna[rna],total_dna[dna]) ]
+	for key in keys:
+		region1,region2=key.split("|")
+		output  = re.split(':|-',region1) 
+		output += re.split(':|-',region2)
+		output += [ connectionsF[key], connectionsB[key] ]
+		output += [ totalRNA[region1], totalDNA[region1] ]
+		output += [ totalRNA[region2], totalDNA[region2] ]
+		ratio = float( abs(connectionsF[key]-connectionsB[key]) )/max(totalRNA[region1]+totalDNA[region1], totalRNA[region2]+totalDNA[region2])
+		output += [ ratio ]
 		print >>out, "\t".join( map(str,output) )
 ########################################################
 if __name__ == '__main__':
