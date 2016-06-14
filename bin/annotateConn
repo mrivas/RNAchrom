@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+import pysam, argparse, sys, numpy, HTSeq, scipy
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description="Annotate the connections between hotspots")
+	parser.add_argument('-c',type=str,dest="cFile",help="STR. Hotspots connections.")
+	parser.add_argument('-r',type=str,dest="rFile",help="GTF or BED file. Regions where reads are counted. If GTF, it must contain biotype information")
+	parser.add_argument('-e',type=str,dest="exonsOnly",help="STR. Valid only if the annotation file is GTF. It takes 'true' if counts are performed on exons only, 'false' if counts are performed over all the gene length (including introns). Default: 'false'",default="false")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output.txt\"",default="output.txt")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def getGenesIV(regionsFile):
+	# Get genomic region per region_id
+	regions_iv = {}
+	gtf_file = HTSeq.GFF_Reader( regionsFile )
+	for feature in gtf_file:
+		region_id = feature.attr["gene_id"]+"|"+feature.attr["gene_name"]+"|"+feature.attr["gene_biotype"]
+		if region_id in regions_iv:
+			if feature.iv.start < regions_iv[region_id].start:
+				regions_iv[region_id].start = feature.iv.start
+			if feature.iv.end > regions_iv[region_id].end:
+				regions_iv[region_id].end = feature.iv.end
+		else:
+			regions_iv[region_id] = HTSeq.GenomicInterval(feature.iv.chrom,feature.iv.start,feature.iv.end,feature.iv.strand) 
+	return regions_iv
+#########################################################
+def getBedIV(regionsFile):
+	# Get genomic region per region_id
+	regions_iv = {}
+	for line in open(regionsFile,"r"):
+		chrom,start,end=line.strip().split("\t")[0:3]
+		region_id=chrom+":"+start+"-"+end
+		regions_iv[region_id] = HTSeq.GenomicInterval(chrom,int(start),int(end),".") 
+	return regions_iv
+#########################################################
+def getRegions(regions_iv):	
+	regions = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+	for region_id in regions_iv:
+		region_iv = regions_iv[region_id]
+		regions[region_iv] += region_id
+	return regions
+#########################################################
+def getExons(regionsFile):
+	# Get genomic region per region_id
+	regions = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+	gtf_file = HTSeq.GFF_Reader( regionsFile )
+	for feature in gtf_file:
+		if feature.type!="exon": continue
+		regions[feature.iv] += feature.attr["gene_id"]+"|"+feature.attr["gene_name"]+"|"+feature.attr["gene_biotype"] 
+	return regions
+#########################################################
+def properPairFilter(rna,dna):
+    # Check that DNA but not RNA start with CC at the 5' end of the read (or GG if reversed aligned)
+    if (    ( not(rna.is_reverse) and (rna.seq[0:2]!="CC"  or rna.seq[0:2]!="CN"  or rna.seq[0:2]!="NC"  or rna.seq[0:2]!="NN" ) ) \
+    or (     rna.is_reverse  and (rna.seq[-2::]!="GG" or rna.seq[-2::]!="GN" or rna.seq[-2::]!="NG" or rna.seq[-2::]!="NN") ) )\
+    and ( (not(dna.is_reverse) and dna.seq[0:2]=="CC") or (dna.is_reverse and dna.seq[-2::]=="GG") ):
+        return True
+    else:
+        return False
+#########################################################
+def annotate(hotspot_iv,regions):
+	hotspot_ids = set()
+	for iv, val in regions[hotspot_iv].steps():
+		hotspot_ids |= val
+	if len(hotspot_ids)>0:
+		hotspot_annot = ",".join( map(str,hotspot_ids) )
+	else:
+		hotspot_annot = "."
+	return hotspot_annot	
+#########################################################
+def main():
+	args = getParser().parse_args()
+	cFile = args.cFile
+	regionsFile = args.rFile
+	extension=regionsFile.split(".")[-1]
+	exonsOnly = args.exonsOnly
+	oFile = args.oFile
+	if exonsOnly=='true':
+		exons_only=True
+	else:
+		exons_only=False
+	oFile = args.oFile
+	print "Getting Regions"
+	if extension=="gtf":
+		regions_iv=getGenesIV(regionsFile)
+		if exons_only:
+			regions = getExons(regionsFile) 
+		else:
+			regions = getRegions(regions_iv)
+	elif extension=="bed":	
+		regions_iv=getBedIV(regionsFile)
+		regions = getRegions(regions_iv)
+	else:
+		print "File must have 'gtf' or 'bed' extension"
+		exit(0)
+	out=open(oFile,'w')
+	print "Open connections"
+	# Iteration over connections
+	for n,connection in enumerate(open(cFile,"r")):
+		if n==0: # header line
+			output=connection.strip().split()
+			output += [ "annot1", "annot2" ]
+			print >>out, "\t".join(map(str,output))
+			continue
+		if n%5000==0: print str(n)+" connections processed"
+		# Get genomic intervals
+		chrom1,start1,end1,chrom2,start2,end2=connection.strip().split("\t")[0:6]
+		hotspot1_iv = HTSeq.GenomicInterval(chrom1,int(start1),int(end1))
+		hotspot2_iv = HTSeq.GenomicInterval(chrom2,int(start2),int(end2))
+		# Get annotations
+		hotspot1_annot=annotate(hotspot1_iv,regions)
+		hotspot2_annot=annotate(hotspot2_iv,regions)
+		# Print results
+		output  = connection.strip().split("\t") 
+		output += [ hotspot1_annot, hotspot2_annot ]
+		print >>out, "\t".join(map(str,output))
+	
+	out.close()
+####################################################
+if __name__ == '__main__':
+	main()
