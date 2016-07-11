@@ -1,0 +1,144 @@
+#!/usr/bin/env python
+import argparse, sys, numpy, itertools, matplotlib, HTSeq, pybedtools
+matplotlib.use('Agg')
+from matplotlib_venn import venn3_unweighted
+from matplotlib_venn import venn2_unweighted
+import matplotlib as mpl
+import matplotlib.cm as cm
+from matplotlib import pyplot
+###########################################################
+def getParser():
+	parser = argparse.ArgumentParser(description='Create PNG Venn diagrams of two or three bed files.')
+	parser.add_argument('-b',type=str,dest="bedFiles",help="Comma separated list of two or three BED files. Each file should contain a P-value in the 5th column.")
+	parser.add_argument('-n',type=str,dest="names",help="Comma separated list of the names corresponding to the BED files using option -b.")
+	parser.add_argument('-o',type=str,dest="outFile",help="STR. Name of output PNG figure. For instance, output.png.")
+	
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+###########################################################
+def main():
+	args = getParser().parse_args()
+	bedFiles = args.bedFiles.strip().split(",")
+	names    = args.names.strip().split(",")
+	outFile   = args.outFile
+	####################################################
+	# Excecution
+	beds=[]
+	for bedFile in bedFiles:
+		bed = pybedtools.BedTool(bedFile)
+		beds.append(bed)
+	print beds
+	if len(beds)==2:
+		a,b = beds
+		combination = (a-b)
+		counts_10,pvalues_10 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = (b-a)
+		counts_01,pvalues_01 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = a.intersect(b,u=True)
+		counts_a11,pvalues_a11 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = b.intersect(a,u=True)
+		counts_b11,pvalues_b11 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+	elif len(beds)==3:
+		a,b,c = beds
+		combination = (a-b-c)
+		counts_100,pvalues_100 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = (b-a-c)
+		counts_010,pvalues_010 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = (c-a-b)
+		counts_001,pvalues_001 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = a.intersect(b,u=True)
+		if combination.count()>0: combination = ( combination-c)
+		counts_a110,pvalues_a110 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = b.intersect(a,u=True)
+		if combination.count()>0: combination = ( combination-c)
+		counts_b110,pvalues_b110 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = a.intersect(c,u=True)
+		if combination.count()>0: combination = ( combination-b)
+		counts_a101,pvalues_a101 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = c.intersect(a,u=True)
+		if combination.count()>0: combination = ( combination-b)
+		counts_c101,pvalues_c101 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = b.intersect(c,u=True)
+		if combination.count()>0: combination = ( combination-a)
+		counts_b011,pvalues_b011 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = c.intersect(b,u=True)
+		if combination.count()>0: combination = ( combination-a)
+		counts_c011,pvalues_c011 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = a.intersect(b,u=True)
+		if combination.count()>0: combination = combination.intersect(c,u=True)
+		counts_a111,pvalues_a111 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = b.intersect(a,u=True)
+		if combination.count()>0: combination = combination.intersect(c,u=True)
+		counts_b111,pvalues_b111 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )
+		combination = c.intersect(b,u=True).intersect(a,u=True)
+		if combination.count()>0: combination = combination.intersect(a,u=True)
+		counts_c111,pvalues_c111 = combination.count(), numpy.mean( [float(x[4]) for x in combination]  )	
+	
+#	#################################################
+	matplotlib.rcParams.update({'font.size': 11})
+#	# Plot venn diagram for 3 sets
+	if len(beds)==2:	
+		figure, axes = pyplot.subplots(3,1,figsize=(5,8))
+		subsets={\
+		"10":counts_10,\
+		"01":counts_01,\
+		"11":str(counts_a11)+"\n"+str(counts_b11)}
+		v = venn2_unweighted(subsets=subsets, set_labels = names, ax=axes[0])
+		axes[0].set_title("Peaks")
+		
+		subsets={\
+		"10":round(float(counts_10)/a.count()*100,1),\
+		"01":round(float(counts_01)/b.count()*100,1),\
+		"11":str(round(float(counts_a11)/a.count()*100,1))+"\n"+str(round(float(counts_b11)/b.count()*100,1))}
+		v = venn2_unweighted(subsets=subsets, set_labels = names, ax=axes[1])
+		axes[1].set_title("Peaks (%)")
+		
+		subsets={\
+		"10":round(pvalues_10,1),\
+		"01":round(pvalues_01,1),\
+		"11":str(round(pvalues_a11,1))+"\n"+str(round(pvalues_b11,1))}
+		v = venn2_unweighted(subsets=subsets, set_labels = names, ax=axes[2])
+		axes[2].set_title("-log10(p-values)")
+
+		figure.savefig(outFile)
+	elif len(beds)==3:
+		figure, axes = pyplot.subplots(3,1,figsize=(5,9))
+		subsets={\
+		"100":counts_100,\
+		"010":counts_010,\
+		"001":counts_001,\
+		"110":str(counts_a110)+"\n"+str(counts_b110),\
+		"101":str(counts_a101)+"\n"+str(counts_c101),\
+		"011":str(counts_b011)+"\n"+str(counts_c011),\
+		"111":str(counts_a111)+"\n"+str(counts_b111)+"\n"+str(counts_c111)}
+		v = venn3_unweighted(subsets=subsets, set_labels = names, ax=axes[0])
+		axes[0].set_title("Peaks")
+		
+		subsets={\
+		"100":round(float(counts_100)/a.count()*100,1),\
+		"010":round(float(counts_010)/b.count()*100,1),\
+		"001":round(float(counts_001)/c.count()*100,1),\
+		"110":str(round(float(counts_a110)/a.count()*100,1))+"\n"+str(round(float(counts_b110)/b.count()*100,1)),\
+		"101":str(round(float(counts_a101)/a.count()*100,1))+"\n"+str(round(float(counts_c101)/c.count()*100,1)),\
+		"011":str(round(float(counts_b011)/b.count()*100,1))+"\n"+str(round(float(counts_c011)/c.count()*100,1)),\
+		"111":str(round(float(counts_a111)/a.count()*100,1))+"\n"+str(round(float(counts_b111)/b.count()*100,1))+"\n"+str(round(float(counts_c111)/c.count()*100,1))}
+		v = venn3_unweighted(subsets=subsets, set_labels = names, ax=axes[1])
+		axes[1].set_title("Peaks (%)")
+
+		subsets={\
+		"100":round(pvalues_100,1),\
+		"010":round(pvalues_010,1),\
+		"001":round(pvalues_001,1),\
+		"110":str(round(pvalues_a110,1))+"\n"+str(round(pvalues_b110,1)),\
+		"101":str(round(pvalues_a101,1))+"\n"+str(round(pvalues_c101,1)),\
+		"011":str(round(pvalues_b011,1))+"\n"+str(round(pvalues_c011,1)),\
+		"111":str(round(pvalues_a111,1))+"\n"+str(round(pvalues_b111,1))+"\n"+str(round(pvalues_c111,1))}
+		v = venn3_unweighted(subsets=subsets, set_labels = names, ax=axes[2])
+		axes[2].set_title("-log10(p-values)")
+
+		figure.savefig(outFile)
+################################################################
+if __name__ == '__main__':
+	main()

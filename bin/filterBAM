@@ -9,6 +9,7 @@ def getParser():
 	parser.add_argument('-w',type=str,dest="which",help="STR. 'rna' or 'dna' to print only the RNA or DNA end, respectively. Default = 'rna'",default="rna")
 	parser.add_argument('-m',type=str,dest="mateTypes",help="STR. Comma separated list of mate types. It can be any combination of 'proper', 'cis', 'trans', and 'inter'. Default = 'cis,trans,inter'",default="cis,trans,inter")
 	parser.add_argument('-l',type=int,dest="fLength",help="INT. Fragment length threshold to discriminate between cis and trans. Default = \"0\"",default=0)
+	parser.add_argument('-e',type=str,dest="extraFile",help="STR. 'yes' if the output is saved in a BAM file as well, 'no' otherwise. Prefix name for output BED and BAM files. Default = \"output\"",default="output")
 	parser.add_argument('-o',type=str,dest="oFile",help="STR. Prefix name for output BED and BAM files. Default = \"output\"",default="output")
 
 	if len(sys.argv) == 1:

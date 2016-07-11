@@ -63,6 +63,12 @@ def properPairFilter(rna,dna):
     else:
         return False
 #########################################################
+def distance(rna_iv,dna_iv):
+	a,b=rna_iv.start,rna_iv.end
+	c,d=dna_iv.start,dna_iv.end
+	distance=max(d-a,b-c)
+	return distance
+#########################################################
 def main():
 	args = getParser().parse_args()
 	bamFiles = args.bamFiles.split(",")
@@ -127,9 +133,16 @@ def main():
 				proper_pairs_dna[read.qname]["region_ids"] |= region_ids
 			# Check if RNA and DNA have been both found
 			if (read.qname in proper_pairs_rna) and (read.qname in proper_pairs_dna):
-				if read.is_proper_pair and not( properPairFilter(proper_pairs_rna[read.qname]["read"],proper_pairs_dna[read.qname]["read"]) ): continue
 				rna_iv    = proper_pairs_rna[read.qname]["read_iv"]
 				dna_iv    = proper_pairs_dna[read.qname]["read_iv"]
+				# Define flag
+				flag="."
+				if   read.is_proper_pair and not( properPairFilter(proper_pairs_rna[read.qname]["read"],proper_pairs_dna[read.qname]["read"]) ): flag="properNoCCmark"
+				elif read.is_proper_pair and      properPairFilter(proper_pairs_rna[read.qname]["read"],proper_pairs_dna[read.qname]["read"])  : flag="properWithCCmark"
+				elif rna_iv.chrom==dna_iv.chrom and distance(rna_iv,dna_iv)<=1000:  flag="proximal"
+				elif rna_iv.chrom==dna_iv.chrom and distance(rna_iv,dna_iv)>1000:  flag="distal"
+				elif rna_iv.chrom!=dna_iv.chrom:                                   flag="interChrom"
+
 				if len(proper_pairs_rna[read.qname]["region_ids"])>0:
 					rna_annot = ",".join( map(str,proper_pairs_rna[read.qname]["region_ids"]) )
 				else:
@@ -142,6 +155,7 @@ def main():
 				output += [dna_iv.chrom, dna_iv.start, dna_iv.end, dna_iv.strand ]
 				output += [ rna_annot, dna_annot ]
 				output += [read.qname]
+				output += [flag]
 				print >>out, "\t".join(map(str,output))
 				# Clear entry to save memory
 				del proper_pairs_rna[read.qname]
