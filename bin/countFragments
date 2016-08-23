@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 import argparse, sys, HTSeq
+from collections import defaultdict
 import RNAchrom
 
 ###########################################################
 # Get command line arguments
 def getParser():
-	parser = argparse.ArgumentParser(description='Counts the number of RNA and DNA mates per gene (including introns).')
-	parser.add_argument('-a',type=str,dest="aFile",help="BAM file. The left and right ends correspond to RNA and DNA, respectively")
-	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
+	parser = argparse.ArgumentParser(description='Counts the number of RNA and DNA mates per gene. Only consider mates if they do not overlap the same genetic feature ( as described in the input annotation file)')
+	parser.add_argument('-a',type=str,dest="aFiles",help="STR. Comma separated list of annotation files, each being the output of annotateBAM")
+	parser.add_argument('-g',type=str,dest="genes",help="STR. List of genes and their respective lengths.")
+	parser.add_argument('-d',type=int,dest="dist",help="INT. Mates with distances between 'rna' and 'dna' lower or equal than this value will be discarded. ")
 	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
 
 	if len(sys.argv) == 1:
@@ -15,77 +17,46 @@ def getParser():
 		exit(0)
 	return parser
 #########################################################
-def getGenes(gtfFile):
-	# Get genomic region per gene_id
-	regions = {}
-	gtf_file = HTSeq.GFF_Reader( gtfFile )
-	for feature in gtf_file:
-		gene_id = feature.attr["gene_id"]
-		if gene_id in regions:
-			if feature.iv.start < regions[gene_id].start:
-				regions[gene_id].start = feature.iv.start
-			if feature.iv.end > regions[gene_id].end:
-				regions[gene_id].end = feature.iv.end
-		else:
-			regions[gene_id] = HTSeq.GenomicInterval(feature.iv.chrom,feature.iv.start,feature.iv.end,feature.iv.strand) 
-#	# Get gene_id per genomic region
-#	genes = HTSeq.GenomicArrayOfSets("auto",stranded=False)
-#	for gene_id in regions:
-#		iv = regions[gene_id]
-#		genes[ iv ] += gene_id+":"+iv.strand
-	return regions
+def getCoord(line):
+	line=line.strip().split("\t")
+	rnaChrom,rnaStart,rnaEnd,rnaStrand=line[0],int(line[1]),int(line[2]),line[3]
+	dnaChrom,dnaStart,dnaEnd,dnaStrand=line[4],int(line[5]),int(line[6]),line[7]
+	rnaAnnot,dnaAnnot=line[8],line[9]
+
 #########################################################
 def main():
 	args = getParser().parse_args()
-	aFile = args.aFile
-	gtfFile = args.gFile
+	aFiles = args.aFiles.split(",")
+	genes = args.genes
+	dist = args.dist
 	oFile = args.oFile
 
-	print "Getting genes"
-	regions = getGenes(gtfFile)
-	print "Counting reads per gene"
-	reads=HTSeq.BAM_Reader(aFile)
-	counts = {}
-	for gene_id in regions:
-		gene_iv = regions[gene_id]
-		# Get read-pairs (rnadna) or singletons (rna,dna) per gene
-		reads_id = {}
-		for read in reads[gene_iv]:
-			if not(read.read.name in reads_id): reads_id[read.read.name]=["",""]
-			if read.pe_which=="first" and read.iv.strand!=gene_iv.strand: # RNA (different stands as we are sequencing cDNA from RNA)
-				reads_id[read.read.name][0]="rna"
-			elif read.pe_which=="first" and read.iv.strand==gene_iv.strand: # antisense RNA
-				reads_id[read.read.name][0]="Arna"
-			elif read.pe_which=="second" and read.iv.strand!=gene_iv.strand: # DNA
-				reads_id[read.read.name][1]="dna"
-			elif read.pe_which=="second" and read.iv.strand==gene_iv.strand: # antisense DNA
-				reads_id[read.read.name][1]="Adna"
-		# Count read-pairs (rnadna,Arnadna,rnaAdna,ArnaAdna) or singletons (Arna,Adna,,rna,dna) per gene
-		if not( gene_id in counts):
-			counts[gene_id] = {} 
-			counts[gene_id]["rna"]    ,counts[gene_id]["dna"]     =0,0
-			counts[gene_id]["Arna"]   ,counts[gene_id]["Adna"]    =0,0
-			counts[gene_id]["rnadna"] ,counts[gene_id]["Arnadna"] =0,0
-			counts[gene_id]["rnaAdna"],counts[gene_id]["ArnaAdna"]=0,0
-		for key in reads_id:
-			value = "".join( map(str,reads_id[key]) ) # rna/dna/rnadna
-			counts[gene_id][value] += 1
-	print "Saving results"
-	out = open(oFile,'w')
-	# Print header line
-	output = ["chrom","start","end","gene_id","score","strand"]
-	output += ["rna","Arna","dna","Adna"]
-	output += ["rna-dna","Arna-dna","rna-Adna","Arna-Adna"]
-	print>>out, "\t".join(map(str,output))
-	# Print counts
-	for gene_id in counts:
-		#gene_id,gene_strand=gene_id_strand.split(":")
-		gene_iv=regions[gene_id]
-		output = [gene_iv.chrom,gene_iv.start,gene_iv.end,gene_id,".",gene_iv.strand]
-		output += [counts[gene_id]["rna"]    ,counts[gene_id]["Arna"]    ]
-		output += [counts[gene_id]["dna"]    ,counts[gene_id]["Adna"]    ]
-		output += [counts[gene_id]["rnadna"] ,counts[gene_id]["Arnadna"] ]
-		output += [counts[gene_id]["rnaAdna"],counts[gene_id]["ArnaAdna"]]
+	# Count RNA and DNA reads
+	countsRNA,countsDNA=defaultdict(int),defaultdict(int)
+
+	for aFile in aFiles:
+		for line in open(aFile,"r"):
+			line=line.strip().split("\t")
+			rnaChrom,rnaStart,rnaEnd,rnaStrand=line[0],int(line[1]),int(line[2]),line[3]
+			dnaChrom,dnaStart,dnaEnd,dnaStrand=line[4],int(line[5]),int(line[6]),line[7]
+			rnaAnnots,dnaAnnots=set(line[8].split(",")),set(line[9].split(","))
+			
+			if rnaChrom==dnaChrom: d=max( dnaEnd-rnaStart, rnaEnd-dnaStart  ) # max distance between mates
+			else:                  d=dist+1 # if inter-chrom give to it a value greater than dist
+			# Only consider mates farther apart than dist
+			if d<0: print "Warning: dist is lower than zero"
+			if d>dist:
+				for rnaAnnot in rnaAnnots:
+					rnaAnnot=rnaAnnot.split("|")[0]
+					if rnaAnnot not in dnaAnnots: countsRNA[rnaAnnot] += 1
+				for dnaAnnot in dnaAnnots:
+					dnaAnnot=dnaAnnot.split("|")[0]
+					if dnaAnnot not in rnaAnnots: countsDNA[dnaAnnot] += 1
+	# Save results
+	out=open(oFile,"w")
+	for line in open(genes,"r"):
+		geneID,geneLength=line.strip().split("\t")
+		output=[ geneID, geneLength,countsRNA[geneID],countsDNA[geneID] ]
 		print>>out, "\t".join(map(str,output))
 				
 	out.close()

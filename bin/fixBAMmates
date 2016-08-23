@@ -16,13 +16,15 @@ def getParser():
 
 ###########################################################
 def updateFlags(almnts,groups):
-	# Check if which one is first (64) and second (128)
-	if   dict(almnts[0].tags)["RG"]==groups[0]: fi=0;si=1
-	else:                                       fi=1;si=0
-	first=almnts[fi]
+#	# Check if which one is first (64) and second (128)
+#	if   dict(almnts[0].tags)["RG"]==groups[0]: fi=0;si=1
+#	else:                                       fi=1;si=0
+#	first=almnts[fi]
+	first=almnts[0]
 	first.flag += 64 # first in pair
 	first.flag += 1 # Reads are paired
-	second=almnts[si]
+#	second=almnts[si]
+	second=almnts[1]
 	second.flag += 128 # Second in pair
 	second.flag += 1 # Reads are paired
 	# Mate is in reverse strand (32)
@@ -76,23 +78,31 @@ def main():
 	#bam=HTSeq.BAM_Reader( "RDI-Bharat_S1Aligned.sortedByName.out.bam")
 	read_name=None
 	for n,almnt in enumerate(bam):
-		if n%500000 == 0: print str(n)+" read processed"
-		if almnt.is_unmapped or dict(almnt.tags)["NH"]>1: continue
+		if n%5000000 == 0: print str(n)+" read processed"
+		#if almnt.is_unmapped or dict(almnt.tags)["NH"]>1: continue
+		if almnt.is_unmapped or almnt.is_secondary: continue
 		if almnt.qname != read_name:
 			#Print previous reads
 			if read_name != None:
-				if len(reads)==2: # filter out singletons
+				if len(reads1)==1 and len(reads2)==1: # filter out singletons & mutliple primary alignments
 					# Update flags
-					first,second=updateFlags(reads,groups)
+					first,second=updateFlags([reads1[0],reads2[0]],groups)
 					# Print results
 					out.write(first)
 					out.write(second)
 			#Store new name and read
 			read_name = almnt.qname
-			reads = [ almnt ]
+			reads1, reads2 = [], []
+			if dict(almnt.tags)["RG"]==groups[0]:
+				reads1 = [ almnt ]
+			elif dict(almnt.tags)["RG"]==groups[1]:
+				reads2 = [ almnt ]
 		else:
 			#Store new reads
-			reads.append(almnt)
+			if dict(almnt.tags)["RG"]==groups[0]:
+				reads1.append(almnt)
+			elif dict(almnt.tags)["RG"]==groups[1]:
+				reads2.append(almnt)
 	bam.close()	
 	out.close()
 ####################################################

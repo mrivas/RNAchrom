@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+import HTSeq, argparse, sys
+#import RNAchrom
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description='Given a GTF file outputs the ID, name, and biotype of each gene ')
+	parser.add_argument('-g',type=str,dest="gFile",help="GTF file. Annotation file with biotype information")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output.txt\"",default="output.txt")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+###########################################################
+def main():
+	args = getParser().parse_args()
+	gFile = args.gFile
+	oFile = args.oFile
+	# Excecution #####################################################
+	gtf_reader = HTSeq.GFF_Reader( gFile )
+	genes = set()
+	for feature in gtf_reader:
+		if feature.type == "exon":
+			genes |= set( [feature.attr["gene_id"]+"|"+feature.attr["gene_name"]+"|"+feature.attr["gene_biotype"]] )
+	print "Saving results to: "+oFile
+	out = open(oFile,'w')
+	for gene in genes:
+		gene_id=gene.split("|")[0]
+		print >>out, "\t".join(map(str,[gene_id,gene]))
+	out.close()
+####################################################
+if __name__ == '__main__':
+	main()
