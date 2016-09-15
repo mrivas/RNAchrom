@@ -1,0 +1,128 @@
+#!/usr/bin/env python
+import pysam, argparse, sys, numpy, HTSeq, scipy
+
+def getParser():
+	# Get command line arguments
+	parser = argparse.ArgumentParser(description="Annotate RNA-chromatin interactions using a different set of features for RNA and DNA mates")
+	parser.add_argument('-b',type=str,dest="bamFiles",help="STR. Comma separated list of BAM files.")
+	parser.add_argument('-r',type=str,dest="rFile",help="GTF file. RNA features where reads are counted. If GTF, it must contain biotype information")
+	parser.add_argument('-d',type=str,dest="dFile",help="BED file. DNA features where reads are counted. If GTF, it must contain biotype information")
+	parser.add_argument('-l',type=int,dest="length",help="INT. Distance between same chromosome RNA and DNA mates to be considered proximal (lower or equal than this) or distal (larger than this). Default: 2000",default=2000)
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file. Default = \"output.txt\"",default="output.txt")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def getRegions(regionsFile):
+	# Get genomic region per region_id
+	regions = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+	for line in open(regionsFile,"r"):
+		chrom,start,end,region_id=line.strip().split("\t")[0:4]
+		region_iv = HTSeq.GenomicInterval(chrom,int(start),int(end),".") 
+		regions[region_iv] += region_id
+	return regions
+#########################################################
+def getExons(regionsFile):
+	# Get genomic region per region_id
+	regions = HTSeq.GenomicArrayOfSets("auto",stranded=False)
+	gtf_file = HTSeq.GFF_Reader( regionsFile )
+	for feature in gtf_file:
+		if feature.type!="exon": continue
+		regions[feature.iv] += feature.attr["gene_id"]+"|"+feature.attr["gene_name"]+"|"+feature.attr["gene_biotype"] 
+	return regions
+#########################################################
+def distance(rna_iv,dna_iv):
+	a,b=rna_iv.start,rna_iv.end
+	c,d=dna_iv.start,dna_iv.end
+	distance=max(d-a,b-c)
+	return distance
+#########################################################
+def main():
+	args = getParser().parse_args()
+	bamFiles = args.bamFiles.split(",")
+	rFile = args.rFile
+	dFile = args.dFile
+	dist = args.length
+	oFile = args.oFile
+	
+	print "Getting Regions"
+	rnaRegions = getExons(rFile)   # Convert GTF to regions 
+	dnaRegions = getRegions(dFile) # Convert BED to regions
+	# Open output file
+	out=open(oFile,'w')
+	print "Open bam file with reads"
+	for bamFile in bamFiles:
+		reads=pysam.Samfile( bamFile, 'rb' )
+		chroms=reads.references
+		proper_pairs_rna,proper_pairs_dna={},{}
+		# Iteration over reads
+		for n,read in enumerate(reads):
+			if n%5000000==0: print str(n)+" reads processed"
+			# Extract first M region from reads
+			if not(read.is_reverse) and read.cigar[ 0][0]==0:
+				length=read.cigar[0][1]
+				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.pos,read.pos+length,"+")
+			elif   read.is_reverse  and read.cigar[-1][0]==0:
+				length=read.cigar[-1][1]
+				read_iv = HTSeq.GenomicInterval(chroms[read.rname],read.pos+read.qend-length,read.pos+read.qend,"-")
+			# Get region_ids overlapping the first M region of the current read
+			region_ids = set()
+			if read.is_read1: # RNA
+				for iv, val in rnaRegions[read_iv].steps():
+					region_ids |= val
+			else: 			  # DNA 
+				for iv, val in dnaRegions[read_iv].steps():
+					region_ids |= val
+			# RNA
+			if   read.is_read1 and not(read.qname in proper_pairs_rna):
+				proper_pairs_rna[read.qname]={}
+				proper_pairs_rna[read.qname]["read"]=read
+				proper_pairs_rna[read.qname]["read_iv"]=read_iv
+				proper_pairs_rna[read.qname]["region_ids"]=region_ids
+			elif read.is_read1 and    (read.qname in proper_pairs_rna):
+				proper_pairs_rna[read.qname]["region_ids"] |= region_ids
+			# DNA
+			if   read.is_read2 and not(read.qname in proper_pairs_dna):
+				proper_pairs_dna[read.qname]={}
+				proper_pairs_dna[read.qname]["read"]=read
+				proper_pairs_dna[read.qname]["read_iv"]=read_iv
+				proper_pairs_dna[read.qname]["region_ids"]=region_ids
+			elif read.is_read2 and    (read.qname in proper_pairs_dna):
+				proper_pairs_dna[read.qname]["region_ids"] |= region_ids
+			# Check if RNA and DNA have been both found
+			if (read.qname in proper_pairs_rna) and (read.qname in proper_pairs_dna):
+				rna_iv    = proper_pairs_rna[read.qname]["read_iv"]
+				dna_iv    = proper_pairs_dna[read.qname]["read_iv"]
+				# Define flag
+				flag="."
+				if rna_iv.chrom==dna_iv.chrom and distance(rna_iv,dna_iv)<=dist: flag="proximal"
+				elif rna_iv.chrom==dna_iv.chrom and distance(rna_iv,dna_iv)>dist:flag="distal"
+				elif rna_iv.chrom!=dna_iv.chrom:                                     flag="interChrom"
+				# Gather annotations
+				if len(proper_pairs_rna[read.qname]["region_ids"])>0:
+					rna_annot = ",".join( map(str,proper_pairs_rna[read.qname]["region_ids"]) )
+				else:
+					rna_annot = "."
+				if len(proper_pairs_dna[read.qname]["region_ids"])>0:
+					dna_annot = ",".join( map(str,proper_pairs_dna[read.qname]["region_ids"]) )
+				else:
+					dna_annot = "."
+				# Print results
+				output  = [rna_iv.chrom, rna_iv.start, rna_iv.end, rna_iv.strand ]
+				output += [dna_iv.chrom, dna_iv.start, dna_iv.end, dna_iv.strand ]
+				output += [ rna_annot, dna_annot ]
+				output += [read.qname]
+				output += [flag]
+				print >>out, "\t".join(map(str,output))
+				# Clear printed entry to save memory
+				del proper_pairs_rna[read.qname]
+				del proper_pairs_dna[read.qname]			
+		
+		
+		reads.close()
+	out.close()
+####################################################
+if __name__ == '__main__':
+	main()

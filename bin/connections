@@ -16,6 +16,7 @@ def getParser():
 def main():
 	args = getParser().parse_args()
 	linksFile = args.cFile
+	regions1,regions2 = args.rFiles.split(",")
 	oFile = args.oFile
 
 	# Collect data

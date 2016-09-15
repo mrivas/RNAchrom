@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+import argparse, sys, matplotlib, itertools
+from collections import defaultdict
+###########################################################
+# Get command line arguments
+def getParser():
+	parser = argparse.ArgumentParser(description='Extract gene ontology terms related to RNA hotspots.')
+	parser.add_argument('-a',type=str,dest="aFile",help="STR. Association file (output of analysis_count.R).")
+	parser.add_argument('-go',type=str,dest="goFile",help="STR. Gene ontology file (output of GREAT).")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def main():
+	args = getParser().parse_args()
+	associationsFile = args.aFile
+	geneOntologyFile = args.goFile
+	oFile = args.oFile
+
+	# Collect all associations
+	associations=defaultdict(set)
+	for n,line in enumerate(open(associationsFile,"r")):
+		if n==0: continue # skip header line
+		line=line.strip()
+		rna,dna,links,rna_links,dna_links=line.split("\t")
+		associations[dna] |= set([line])
+
+	out=open(oFile,"w")
+	# Print header line
+	output = ["#RNA_feature","DNA_feature","links","RNA_total_links","DNA_total_links"]
+	output += ["ontology","ID","desc","BinomFDR","HyperFDR"]
+	print >>out, "\t".join( map(str,output) )
+	# Iterate over gene ontology terms
+	for line in open(geneOntologyFile,"r"):
+		if line[0]=="#": continue # skip annotation lines
+		columns=line.strip().split("\t")
+		ontology,ID,desc,BinomFDR,HyperFDR,dnas=columns[0],columns[1],columns[2],float(columns[6]),float(columns[15]),columns[22]
+		if BinomFDR>=0.05 or HyperFDR>=0.05: continue
+		# Print results while Iterate over each dna hotspot
+		for dna in dnas.split(","):
+			for association in associations[dna]:
+				output = association.split("\t")
+				output += [ontology,ID,desc,BinomFDR,HyperFDR]
+				print >>out, "\t".join( map(str,output) )
+	out.close()
+########################################################
+if __name__ == '__main__':
+    main()

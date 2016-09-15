@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+import argparse, sys, numpy, matplotlib, itertools, scipy, re
+from collections import defaultdict
+###########################################################
+# Get command line arguments
+def getParser():
+	parser = argparse.ArgumentParser(description='Count the interactions between any two regions sharing at least one link.')
+	parser.add_argument('-c',type=str,dest="cFile",help="STR. Name of file containing the interactions between RNA and DNA features (output of annotateInteractions).")
+	parser.add_argument('-a',type=str,dest="avoidProx",help="STR. 'true' or 'false' to avoid proximal or not links that are proximal. Default: 'false'",default="false")
+	parser.add_argument('-o',type=str,dest="oFile",help="STR. Name of output file.")
+
+	if len(sys.argv) == 1:
+		print >> sys.stderr,parser.print_help()
+		exit(0)
+	return parser
+#########################################################
+def main():
+	args = getParser().parse_args()
+	linksFile = args.cFile
+	avoidProximal = args.avoidProx
+	oFile = args.oFile
+
+	# Collect data
+	totalRNA,totalDNA = defaultdict(int), defaultdict(int)
+	connections = defaultdict(int)
+	keys=set()
+	for line in open(linksFile,"r"):
+		line=line.strip().split("\t")
+		regions1=line[8].split(",") # RNA features --there can be more than one, ei genes and repeats overalapping
+		region2=line[9] # DNA hotspot
+		linkType=line[11]
+
+		if avoidProximal=="true" and linkType=="proximal": continue
+		for region1 in regions1:
+			if region1=="." and region2==".": continue
+			totalRNA[region1]+=1
+			totalDNA[region2]+=1
+			if region1!="." and region2!=".":
+				key=[region1,region2]
+				key=";".join( map(str,key) )
+				connections[key]+=1
+				keys |= set([key])
+	# Print results
+	out=open(oFile,"w")
+	output = ["RNA_feature","DNA_feature","links","RNA_total_links","DNA_total_links"]
+	print >>out, "\t".join( map(str,output) )
+	for key in keys:
+		region1,region2=key.split(";")
+		output  = [ region1, region2 ] 
+		output += [ connections[key] ]
+		output += [ totalRNA[region1], totalDNA[region2] ]
+		print >>out, "\t".join( map(str,output) )
+########################################################
+if __name__ == '__main__':
+    main()

@@ -79,8 +79,8 @@ def main():
 	read_name=None
 	for n,almnt in enumerate(bam):
 		if n%5000000 == 0: print str(n)+" read processed"
-		#if almnt.is_unmapped or dict(almnt.tags)["NH"]>1: continue
-		if almnt.is_unmapped or almnt.is_secondary: continue
+		if almnt.is_unmapped or dict(almnt.tags)["NH"]>1: continue
+		#if almnt.is_unmapped or almnt.is_secondary: continue
 		if almnt.qname != read_name:
 			#Print previous reads
 			if read_name != None:
